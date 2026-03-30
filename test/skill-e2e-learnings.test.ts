@@ -44,8 +44,9 @@ describeIfSelected('Learnings E2E', ['learnings-show'], () => {
       fs.chmodSync(path.join(binDir, script), 0o755);
     }
 
-    // Seed learnings JSONL with 3 entries of different types
-    const slug = 'test-project';
+    // Seed learnings JSONL — slug must match what gstack-slug computes.
+    // With no git remote, gstack-slug falls back to basename(workDir).
+    const slug = path.basename(workDir).replace(/[^a-zA-Z0-9._-]/g, '');
     const projectDir = path.join(gstackHome, 'projects', slug);
     fs.mkdirSync(projectDir, { recursive: true });
 
