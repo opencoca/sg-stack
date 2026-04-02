@@ -293,6 +293,14 @@ The Docker build accepts an overridable base image, so the team can swap in its 
 
 Version bumps in the Makefile now update both `VERSION` and `package.json`, which keeps container tags and Bun package metadata aligned.
 
+Auth handling is runtime-only:
+
+- `.env` is the primary auth source for `make it_run`, `make it_run_dev`, and `make test_fresh`.
+- If `.env` is missing, selected env vars from the caller or cloud harness are forwarded into the container by name.
+- No auth values are passed as Docker build args or baked into image layers.
+- Local account login state from `~/.claude` and `~/.codex` is mounted into the container by default, so users signed into Claude Code or Codex can reuse those sessions instead of being forced onto API billing.
+- Set `ENABLE_ACCOUNT_MOUNTS=0` when a runner should not mount local account state.
+
 ## Privacy & Telemetry
 
 gstack includes **opt-in** usage telemetry to help improve the project. Here's exactly what happens:
