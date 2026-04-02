@@ -432,6 +432,17 @@ describe('gstack-update-check', () => {
     expect(existsSync(join(stateDir, 'last-update-check'))).toBe(false);
   });
 
+  test('network_egress: off disables all remote update checks', () => {
+    writeFileSync(join(gstackDir, 'VERSION'), '0.3.3\n');
+    writeFileSync(join(gstackDir, 'REMOTE_VERSION'), '0.4.0\n');
+    writeConfig('network_egress: off\n');
+
+    const { exitCode, stdout } = run();
+    expect(exitCode).toBe(0);
+    expect(stdout).toBe('');
+    expect(existsSync(join(stateDir, 'last-update-check'))).toBe(false);
+  });
+
   test('missing config.yaml does not crash', () => {
     writeFileSync(join(gstackDir, 'VERSION'), '0.3.3\n');
     writeFileSync(join(gstackDir, 'REMOTE_VERSION'), '0.4.0\n');

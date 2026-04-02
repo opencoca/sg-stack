@@ -66,6 +66,12 @@ case "$TIER" in
   *) TIER="off" ;;  # invalid value → default to off
 esac
 
+NETWORK_EGRESS="$($CONFIG_CMD get network_egress 2>/dev/null || true)"
+case "${NETWORK_EGRESS:-on}" in
+  off|false|disabled) NETWORK_EGRESS="off" ;;
+  *)                  NETWORK_EGRESS="on" ;;
+esac
+
 if [ "$TIER" = "off" ]; then
   # Still clear pending markers for this session even if telemetry is off
   [ -n "$SESSION_ID" ] && rm -f "$PENDING_DIR/.pending-$SESSION_ID" 2>/dev/null || true
@@ -196,7 +202,7 @@ printf '{"v":1,"ts":"%s","event_type":"%s","skill":"%s","session_id":"%s","gstac
 
 # ─── Trigger sync if tier is not off ─────────────────────────
 SYNC_CMD="$GSTACK_DIR/bin/gstack-telemetry-sync"
-if [ -x "$SYNC_CMD" ]; then
+if [ "$NETWORK_EGRESS" != "off" ] && [ -x "$SYNC_CMD" ]; then
   "$SYNC_CMD" 2>/dev/null &
 fi
 

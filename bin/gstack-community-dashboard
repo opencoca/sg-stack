@@ -11,6 +11,20 @@
 set -uo pipefail
 
 GSTACK_DIR="${GSTACK_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+CONFIG_CMD="$GSTACK_DIR/bin/gstack-config"
+
+NETWORK_EGRESS="$($CONFIG_CMD get network_egress 2>/dev/null || true)"
+case "${NETWORK_EGRESS:-on}" in
+  off|false|disabled)
+    echo "gstack community dashboard"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Network egress is disabled. Community telemetry is unavailable."
+    echo ""
+    echo "For local analytics, run: gstack-analytics"
+    exit 0
+    ;;
+esac
 
 # Source Supabase config if not overridden by env
 if [ -z "${GSTACK_SUPABASE_URL:-}" ] && [ -f "$GSTACK_DIR/supabase/config.sh" ]; then
