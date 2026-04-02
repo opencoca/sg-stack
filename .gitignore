@@ -1,20 +1,27 @@
+# Runtime secrets and local auth state
 .env
+.env.local
+.env.*
+!.env.example
+extension/.auth.json
+.claude.json
+
+# Local development and generated state
 node_modules/
 browse/dist/
 design/dist/
 bin/gstack-global-discover
 .gstack/
+.gstack-worktrees/
 .claude/skills/
 .agents/
 .factory/
 .context/
-extension/.auth.json
-.gstack-worktrees/
 /tmp/
 *.log
 *.bun-build
-.env
-.env.local
-.env.*
-!.env.example
 supabase/.temp/
+
+# Editor-local files that should stay off-repo
+.vscode/launch.json
+.vscode/extensions.json

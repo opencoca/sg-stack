@@ -1,5 +1,9 @@
 .git
+.env
+.env.*
 .gstack
+.claude
+.codex
 node_modules
 browse/dist
 design/dist
