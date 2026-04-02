@@ -6,6 +6,7 @@ ARG BUN_VERSION=1.3.10
 FROM ${BASE_IMAGE} AS base
 
 ENV DEBIAN_FRONTEND=noninteractive \
+    HOME=/root \
     BUN_INSTALL=/usr/local \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     PATH=/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -18,6 +19,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     python3 \
     && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /root/.claude /root/.codex /workspace
 
 RUN curl -fsSL https://bun.sh/install | BUN_VERSION=${BUN_VERSION} bash
 

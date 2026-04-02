@@ -47,6 +47,11 @@ BASE_IMAGE ?= mcr.microsoft.com/playwright:v1.58.2-noble
 BUN_VERSION ?= 1.3.10
 RUN_COMMAND ?= bun run skill:check
 TEST_COMMAND ?= bun test
+AUTH_ENV_FILE ?= .env
+ENV_PASSTHROUGH_VARS ?= ANTHROPIC_API_KEY OPENAI_API_KEY GEMINI_API_KEY ANTHROPIC_AUTH_TOKEN ANTHROPIC_BASE_URL OPENAI_BASE_URL GEMINI_BASE_URL
+ENABLE_ACCOUNT_MOUNTS ?= 1
+CLAUDE_CONFIG_DIR ?= $(HOME)/.claude
+CODEX_CONFIG_DIR ?= $(HOME)/.codex
 
 # Release version detection (prefers release/* or hotfix/* branch name, falls back to VERSION)
 RELEASE_VERSION := $(shell git rev-parse --abbrev-ref HEAD | sed -n -e 's/^release\///p' -e 's/^hotfix\///p')
@@ -65,6 +70,11 @@ help:
 	@echo "  4) Health check:   make health_check"
 	@echo "  5) Push to GHCR:   make it_build_multi_arch_push_GHCR"
 	@echo ""
+	@echo "Auth runtime:"
+	@echo "  - Uses $(AUTH_ENV_FILE) when present"
+	@echo "  - Falls through caller/CI env vars when $(AUTH_ENV_FILE) is absent"
+	@echo "  - Mounts ~/.claude and ~/.codex by default for account-backed login reuse"
+	@echo ""
 	@echo "Available make commands:"
 	@echo ""
 	@LC_ALL=C $(MAKE) -pRrq -f $(firstword $(MAKEFILE_LIST)) : 2>/dev/null \
@@ -74,19 +84,26 @@ help:
 # ---------------------------------------------------------------------------
 # Common docker run arguments
 # ---------------------------------------------------------------------------
-DOCKER_RUN_ENV_ARGS :=
-ifdef ANTHROPIC_API_KEY
-DOCKER_RUN_ENV_ARGS += -e ANTHROPIC_API_KEY=$(ANTHROPIC_API_KEY)
+# Auth stays runtime-only: prefer .env, then allow selected caller env passthrough.
+ENV_FILE_FLAG := $(if $(wildcard $(AUTH_ENV_FILE)),--env-file $(AUTH_ENV_FILE),)
+DOCKER_RUN_ENV_PASSTHROUGH := $(foreach var,$(ENV_PASSTHROUGH_VARS),$(if $(value $(var)),-e $(var),))
+
+DOCKER_RUN_AUTH_MOUNTS :=
+ifeq ($(ENABLE_ACCOUNT_MOUNTS),1)
+ifneq (,$(wildcard $(CLAUDE_CONFIG_DIR)))
+DOCKER_RUN_AUTH_MOUNTS += -v $(CLAUDE_CONFIG_DIR):/root/.claude
 endif
-ifdef OPENAI_API_KEY
-DOCKER_RUN_ENV_ARGS += -e OPENAI_API_KEY=$(OPENAI_API_KEY)
+ifneq (,$(wildcard $(CODEX_CONFIG_DIR)))
+DOCKER_RUN_AUTH_MOUNTS += -v $(CODEX_CONFIG_DIR):/root/.codex
 endif
-ifdef GEMINI_API_KEY
-DOCKER_RUN_ENV_ARGS += -e GEMINI_API_KEY=$(GEMINI_API_KEY)
 endif
 
-DOCKER_RUN_ARGS := --rm \
-	$(DOCKER_RUN_ENV_ARGS) \
+DOCKER_RUN_BASE_ARGS := --rm \
+	$(ENV_FILE_FLAG) \
+	$(DOCKER_RUN_ENV_PASSTHROUGH) \
+	$(DOCKER_RUN_AUTH_MOUNTS)
+
+DOCKER_RUN_ARGS := $(DOCKER_RUN_BASE_ARGS) \
 	--name $(CONTAINER_NAME)
 
 # ---------------------------------------------------------------------------
@@ -155,10 +172,9 @@ it_build_n_run_no_cache: it_build_no_cache
 
 # Run image with the current checkout bind-mounted for local development
 it_run_dev:
-	$(CONTAINER_RUNTIME) run --rm -it \
+	$(CONTAINER_RUNTIME) run $(DOCKER_RUN_BASE_ARGS) -it \
 		-v $$(pwd):/workspace \
 		-w /workspace \
-		$(DOCKER_RUN_ENV_ARGS) \
 		--name $(CONTAINER_NAME)-dev \
 		$(IMAGE_NAME):$(IMAGE_TAG) \
 		bash
@@ -166,7 +182,7 @@ it_run_dev:
 # Build and run tests in a fresh container
 it_build_n_test_fresh: it_build
 	@echo "Running tests in a fresh container..."
-	$(CONTAINER_RUNTIME) run --rm $(DOCKER_RUN_ENV_ARGS) $(IMAGE_NAME):$(IMAGE_TAG) bash -lc '$(TEST_COMMAND)'
+	$(CONTAINER_RUNTIME) run $(DOCKER_RUN_BASE_ARGS) $(IMAGE_NAME):$(IMAGE_TAG) bash -lc '$(TEST_COMMAND)'
 	@echo "Fresh container test run complete."
 
 # ---------------------------------------------------------------------------
@@ -176,7 +192,7 @@ test:
 	bun test
 
 test_fresh:
-	$(CONTAINER_RUNTIME) run --rm $(DOCKER_RUN_ENV_ARGS) $(IMAGE_NAME):$(IMAGE_TAG) bash -lc '$(TEST_COMMAND)'
+	$(CONTAINER_RUNTIME) run $(DOCKER_RUN_BASE_ARGS) $(IMAGE_NAME):$(IMAGE_TAG) bash -lc '$(TEST_COMMAND)'
 
 # ---------------------------------------------------------------------------
 # Stack health workflow
