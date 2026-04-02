@@ -299,7 +299,14 @@ Auth handling is runtime-only:
 - If `.env` is missing, selected env vars from the caller or cloud harness are forwarded into the container by name.
 - No auth values are passed as Docker build args or baked into image layers.
 - Local account login state from `~/.claude` and `~/.codex` is mounted into the container by default, so users signed into Claude Code or Codex can reuse those sessions instead of being forced onto API billing.
+- If you need to run without mounted home-directory state, put the account-backed Anthropic session token in `.env` as `ANTHROPIC_AUTH_TOKEN`; treat it like any other secret and rotate it when the upstream login changes.
 - Set `ENABLE_ACCOUNT_MOUNTS=0` when a runner should not mount local account state.
+
+The same rule applies to other services:
+
+- If a service has a CLI with persistent login state, mount that config directory into the container instead of baking or copying credentials.
+- If a service only supports env-based auth, keep its secret in `.env` locally or inject it from your cloud harness when `.env` is absent.
+- Extend `ENV_PASSTHROUGH_VARS` and add the mount in the `Makefile` when you add a new provider-specific CLI.
 
 ## Privacy & Telemetry
 
