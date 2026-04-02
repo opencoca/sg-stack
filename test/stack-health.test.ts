@@ -174,4 +174,75 @@ describe('stack-health harness', () => {
     expect(config.version).toBe(1);
     expect(config.checks.length).toBeGreaterThan(0);
   });
+
+  test('CLI can target an arbitrary root with its own config', () => {
+    withTempDir(tempDir => {
+      fs.writeFileSync(path.join(tempDir, 'README.md'), 'Come work at YC\n');
+      fs.writeFileSync(
+        path.join(tempDir, 'stack-health.config.json'),
+        JSON.stringify({
+          version: 1,
+          checks: [
+            {
+              id: 'funnel-copy',
+              type: 'pattern',
+              description: 'Detect recruiting funnel copy',
+              severity: 'warn',
+              include: ['*.md'],
+              matchers: [{ literal: 'Come work at YC', message: 'Recruiting funnel copy is present.' }],
+            },
+          ],
+        }),
+      );
+
+      const result = Bun.spawnSync(
+        ['bun', 'run', path.join(import.meta.dir, '..', 'scripts', 'stack-health.ts'), '--root', tempDir],
+        { cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe' },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const stdout = result.stdout.toString();
+      expect(stdout).toContain(`Target: ${tempDir}`);
+      expect(stdout).toContain('Recruiting funnel copy is present.');
+    });
+  });
+
+  test('CLI honors an explicit config path for another pack', () => {
+    withTempDir(tempDir => {
+      fs.mkdirSync(path.join(tempDir, 'configs'), { recursive: true });
+      fs.writeFileSync(path.join(tempDir, 'README.md'), 'golden age\n');
+      fs.writeFileSync(
+        path.join(tempDir, 'configs', 'pack-health.json'),
+        JSON.stringify({
+          version: 1,
+          checks: [
+            {
+              id: 'hype-check',
+              type: 'pattern',
+              description: 'Detect hype framing',
+              severity: 'warn',
+              include: ['*.md'],
+              matchers: [{ literal: 'golden age', message: 'Inevitability framing is present.' }],
+            },
+          ],
+        }),
+      );
+
+      const result = Bun.spawnSync(
+        [
+          'bun',
+          'run',
+          path.join(import.meta.dir, '..', 'scripts', 'stack-health.ts'),
+          '--root',
+          tempDir,
+          '--config',
+          'configs/pack-health.json',
+        ],
+        { cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe' },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout.toString()).toContain('Inevitability framing is present.');
+    });
+  });
 });

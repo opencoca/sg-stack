@@ -247,6 +247,7 @@ I open sourced how I build software. You can fork it and make it your own.
 |-----|---------------|
 | [Skill Deep Dives](docs/skills.md) | Philosophy, examples, and workflow for every skill (includes Greptile integration) |
 | [Stack Health Harness](docs/stack-health-harness.md) | Reusable health scanner for telemetry, manipulation-pattern, and integrity checks |
+| [Fork About](ABOUT.md) | Neutral fork description for a health-hardened, reusable agent-pack audit distribution |
 | [Builder Ethos](ETHOS.md) | Builder philosophy: Boil the Lake, Search Before Building, three layers of knowledge |
 | [Architecture](ARCHITECTURE.md) | Design decisions and system internals |
 | [Browser Reference](BROWSER.md) | Full command reference for `/browse` |
@@ -260,6 +261,7 @@ gstack now includes a reusable stack-health harness for catching both hard integ
 - `bun run stack:health` runs the full profile.
 - `bun run stack:health --json` emits machine-readable output.
 - `bun run stack:health --strict-warnings` fails on warnings as well as errors.
+- `bun run stack:health --root /path/to/other-pack` audits another skill, tool, or agent pack.
 
 The harness currently checks:
 

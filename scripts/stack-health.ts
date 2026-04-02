@@ -64,8 +64,8 @@ export interface HarnessRunResult {
   warningCount: number;
 }
 
-const ROOT = path.resolve(import.meta.dir, '..');
-const DEFAULT_CONFIG_PATH = path.join(ROOT, 'stack-health.config.json');
+const REPO_ROOT = path.resolve(import.meta.dir, '..');
+const DEFAULT_CONFIG_NAME = 'stack-health.config.json';
 const BUILTIN_IGNORES = [
   '.git/**',
   'node_modules/**',
@@ -250,7 +250,7 @@ export function runCommandCheck(root: string, check: CommandCheck): CheckResult 
   };
 }
 
-export function loadHarnessConfig(configPath = DEFAULT_CONFIG_PATH): HarnessConfig {
+export function loadHarnessConfig(configPath: string): HarnessConfig {
   const content = fs.readFileSync(configPath, 'utf-8');
   const parsed = JSON.parse(content) as HarnessConfig;
   if (parsed.version !== 1) {
@@ -290,8 +290,9 @@ export function runHarness(root: string, config: HarnessConfig, onlyIds: Set<str
   return { results, errorCount, warningCount };
 }
 
-function parseArgs(argv: string[]): { configPath: string; json: boolean; strictWarnings: boolean; onlyIds: Set<string> | null } {
-  let configPath = DEFAULT_CONFIG_PATH;
+function parseArgs(argv: string[]): { rootPath: string; configPath: string; json: boolean; strictWarnings: boolean; onlyIds: Set<string> | null } {
+  let rootPath = REPO_ROOT;
+  let configPathArg: string | null = null;
   let json = false;
   let strictWarnings = false;
   let onlyIds: Set<string> | null = null;
@@ -306,8 +307,13 @@ function parseArgs(argv: string[]): { configPath: string; json: boolean; strictW
       strictWarnings = true;
       continue;
     }
+    if (arg === '--root') {
+      rootPath = path.resolve(argv[index + 1]);
+      index++;
+      continue;
+    }
     if (arg === '--config') {
-      configPath = path.resolve(ROOT, argv[index + 1]);
+      configPathArg = argv[index + 1];
       index++;
       continue;
     }
@@ -317,11 +323,16 @@ function parseArgs(argv: string[]): { configPath: string; json: boolean; strictW
     }
   }
 
-  return { configPath, json, strictWarnings, onlyIds };
+  const configPath = configPathArg
+    ? (path.isAbsolute(configPathArg) ? configPathArg : path.resolve(rootPath, configPathArg))
+    : path.join(rootPath, DEFAULT_CONFIG_NAME);
+
+  return { rootPath, configPath, json, strictWarnings, onlyIds };
 }
 
-function printHumanReport(run: HarnessRunResult): void {
+function printHumanReport(rootPath: string, run: HarnessRunResult): void {
   console.log('Stack Health Harness');
+  console.log(`Target: ${rootPath}`);
   console.log('');
 
   for (const result of run.results) {
@@ -360,12 +371,12 @@ function printHumanReport(run: HarnessRunResult): void {
 if (import.meta.main) {
   const args = parseArgs(process.argv.slice(2));
   const config = loadHarnessConfig(args.configPath);
-  const run = runHarness(ROOT, config, args.onlyIds);
+  const run = runHarness(args.rootPath, config, args.onlyIds);
 
   if (args.json) {
     console.log(JSON.stringify(run, null, 2));
   } else {
-    printHumanReport(run);
+    printHumanReport(args.rootPath, run);
   }
 
   const shouldFail = run.errorCount > 0 || (args.strictWarnings && run.warningCount > 0);
