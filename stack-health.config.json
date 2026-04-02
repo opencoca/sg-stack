@@ -1,0 +1,249 @@
+{
+  "version": 1,
+  "defaultIgnores": [
+    "test/**",
+    "browse/test/**",
+    "design/test/**",
+    "docs/**"
+  ],
+  "checks": [
+    {
+      "id": "generated-output-freshness",
+      "type": "command",
+      "description": "Generated SKILL.md outputs must stay in sync with their templates.",
+      "severity": "error",
+      "command": "bun",
+      "args": ["run", "scripts/gen-skill-docs.ts", "--dry-run"]
+    },
+    {
+      "id": "touchfile-consistency",
+      "type": "command",
+      "description": "Touchfile and tier maps must remain complete and synchronized.",
+      "severity": "error",
+      "command": "bun",
+      "args": ["test", "test/touchfiles.test.ts"]
+    },
+    {
+      "id": "audit-compliance",
+      "type": "command",
+      "description": "Existing audit invariants must continue to pass.",
+      "severity": "error",
+      "command": "bun",
+      "args": ["run", "test:audit"]
+    },
+    {
+      "id": "telemetry-and-egress-surfaces",
+      "type": "pattern",
+      "description": "Report telemetry, Supabase, and remote community/update surfaces that still need removal or containment.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "ETHOS.md",
+        "bin/**",
+        "scripts/resolvers/**",
+        "SKILL.md.tmpl",
+        "*/SKILL.md.tmpl"
+      ],
+      "matchers": [
+        {
+          "literal": "gstack-telemetry-log",
+          "message": "Telemetry logging hook still exists in a shipped source path."
+        },
+        {
+          "literal": "community-pulse",
+          "message": "Hosted community dashboard endpoint is still referenced."
+        },
+        {
+          "regex": "GSTACK_SUPABASE_(URL|ANON_KEY)",
+          "flags": "i",
+          "message": "Supabase runtime configuration is still referenced."
+        },
+        {
+          "regex": "functions/v1/(community-pulse|telemetry-ingest)",
+          "flags": "i",
+          "message": "Hosted function endpoint is still referenced."
+        },
+        {
+          "literal": "opt-in usage telemetry",
+          "message": "Telemetry marketing copy is still present."
+        },
+        {
+          "literal": "gstack-config set telemetry community",
+          "message": "Telemetry opt-in path is still present."
+        }
+      ]
+    },
+    {
+      "id": "manipulative-founder-funnel-copy",
+      "type": "pattern",
+      "description": "Report copy that pushes users toward founder identity, YC conversion, or authority-driven persuasion.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "office-hours/**",
+        "scripts/resolvers/**"
+      ],
+      "matchers": [
+        {
+          "regex": "ycombinator\\.com/(apply|software)",
+          "flags": "i",
+          "message": "Direct YC funnel link is present."
+        },
+        {
+          "literal": "founder signal",
+          "message": "Founder-scoring language is present."
+        },
+        {
+          "literal": "I didn't know I could be a founder",
+          "message": "Identity-expansion funnel copy is present."
+        },
+        {
+          "literal": "Come work at YC",
+          "message": "Recruiting funnel copy is present."
+        },
+        {
+          "regex": "creator of GStack|Garry Tan",
+          "flags": "i",
+          "message": "Authority-conversion copy is present."
+        },
+        {
+          "literal": "exactly the traits we look for in YC founders",
+          "message": "Founder-worth framing is present."
+        }
+      ]
+    },
+    {
+      "id": "mania-adjacent-productivity-copy",
+      "type": "pattern",
+      "description": "Report hype copy that encourages superhuman-capacity narratives or pressure framing.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "ETHOS.md",
+        "office-hours/**",
+        "scripts/resolvers/**"
+      ],
+      "matchers": [
+        {
+          "literal": "golden age",
+          "message": "Inevitability framing is present."
+        },
+        {
+          "literal": "Compression |",
+          "message": "Compression-ratio framing is present."
+        },
+        {
+          "regex": "10,000-20,000 lines per day|600,000\\+ lines of production code",
+          "flags": "i",
+          "message": "Extreme throughput claim is present."
+        },
+        {
+          "literal": "team of 20",
+          "message": "Solo-superhuman comparison is present."
+        },
+        {
+          "literal": "batch pressure",
+          "message": "Pressure framing is present."
+        }
+      ]
+    },
+    {
+      "id": "coercive-urgency-and-shame-copy",
+      "type": "pattern",
+      "description": "Report urgency, shame, or seriousness-gating copy that pressures compliance rather than informed choice.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "office-hours/**",
+        "scripts/resolvers/**",
+        "SKILL.md.tmpl",
+        "*/SKILL.md.tmpl"
+      ],
+      "matchers": [
+        {
+          "literal": "ship faster than you thought possible",
+          "message": "Pace-pressure framing is present."
+        },
+        {
+          "regex": "window is closing|before it'?s too late|don'?t be left behind|fall behind",
+          "flags": "i",
+          "message": "Scarcity or urgency manipulation is present."
+        },
+        {
+          "regex": "if you'?re serious|prove you belong|don'?t really want it|you owe it to yourself",
+          "flags": "i",
+          "message": "Shame or seriousness-gating language is present."
+        },
+        {
+          "literal": "tell you exactly what to do next",
+          "message": "Obedience-oriented guidance language is present."
+        }
+      ]
+    },
+    {
+      "id": "surveillance-and-hidden-consent-copy",
+      "type": "pattern",
+      "description": "Report hidden-monitoring or non-consensual tracking language.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "bin/**",
+        "office-hours/**",
+        "scripts/resolvers/**",
+        "SKILL.md.tmpl",
+        "*/SKILL.md.tmpl"
+      ],
+      "matchers": [
+        {
+          "regex": "(quietly|silently|secretly).*(collect|log|monitor|track|watch|record|decide|upgrade)|(collect|log|monitor|track|watch|record|decide|upgrade).*(quietly|silently|secretly)",
+          "flags": "i",
+          "message": "Hidden-process framing is present."
+        },
+        {
+          "regex": "(monitor|track|watch).*(usage|behavior|sessions?)|(usage|behavior|sessions?).*(monitor|track|watch)",
+          "flags": "i",
+          "message": "Monitoring language is present."
+        },
+        {
+          "regex": "(collect|log|record|track|monitor).*(without asking|without consent|in the background)|(without asking|without consent|in the background).*(collect|log|record|track|monitor)",
+          "flags": "i",
+          "message": "Non-consensual or background collection language is present."
+        }
+      ]
+    },
+    {
+      "id": "dependency-and-compliance-copy",
+      "type": "pattern",
+      "description": "Report copy that builds dependency on authority figures or frames guidance as mandatory compliance.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "office-hours/**",
+        "scripts/resolvers/**",
+        "SKILL.md.tmpl",
+        "*/SKILL.md.tmpl"
+      ],
+      "matchers": [
+        {
+          "regex": "you need .*every week|need a partner who knows your business deeply",
+          "flags": "i",
+          "message": "Dependency-building authority language is present."
+        },
+        {
+          "literal": "tell you exactly what to do next",
+          "message": "Obedience-oriented guidance language is present."
+        },
+        {
+          "regex": "pushes you every single week|pushes you every week|push you every week",
+          "flags": "i",
+          "message": "Compliance-pressure partnership language is present."
+        },
+        {
+          "regex": "exactly the kind of builders .* wants to fund",
+          "flags": "i",
+          "message": "Authority approval-seeking language is present."
+        }
+      ]
+    }
+  ]
+}
