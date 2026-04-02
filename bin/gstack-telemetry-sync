@@ -44,6 +44,11 @@ TIER="$("$CONFIG_CMD" get telemetry 2>/dev/null || true)"
 TIER="${TIER:-off}"
 [ "$TIER" = "off" ] && exit 0
 
+NETWORK_EGRESS="$($CONFIG_CMD get network_egress 2>/dev/null || true)"
+case "${NETWORK_EGRESS:-on}" in
+  off|false|disabled) exit 0 ;;
+esac
+
 # ─── Read cursor ─────────────────────────────────────────────
 CURSOR=0
 if [ -f "$CURSOR_FILE" ]; then

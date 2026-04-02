@@ -32,6 +32,13 @@ if [ "$_UC" = "false" ]; then
   exit 0
 fi
 
+_NET=$("$GSTACK_DIR/bin/gstack-config" get network_egress 2>/dev/null || true)
+case "${_NET:-on}" in
+  off|false|disabled)
+    exit 0
+    ;;
+esac
+
 # ─── Migration: fix stale Codex descriptions (one-time) ───────
 # Existing installs may have .agents/skills/gstack/SKILL.md with oversized
 # descriptions (>1024 chars) that Codex rejects. We can't regenerate from

@@ -29,6 +29,8 @@ CONFIG_HEADER='# gstack configuration — edit freely, changes take effect on ne
 #                           #   off       — no data sent, no local analytics
 #                           #   anonymous — counter only, no device ID
 #                           #   community — usage data + stable device ID
+# network_egress: on        # off = disable hosted telemetry sync, remote update
+#                           #       checks, and community dashboard network calls
 #
 # ─── Updates ─────────────────────────────────────────────────────────
 # auto_upgrade: false       # true = silently upgrade on session start

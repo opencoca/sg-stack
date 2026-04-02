@@ -374,6 +374,18 @@ describe('gstack-telemetry-sync', () => {
     expect(events[0]).not.toHaveProperty('event_timestamp');
     expect(events[0]).not.toHaveProperty('concurrent_sessions');
   });
+
+  test('network_egress: off keeps local analytics but skips remote sync', () => {
+    setConfig('telemetry', 'anonymous');
+    setConfig('network_egress', 'off');
+
+    run(`${BIN}/gstack-telemetry-log --skill qa --duration 60 --outcome success --session-id local-only-1`);
+
+    const events = parseJsonl();
+    expect(events).toHaveLength(1);
+    expect(fs.existsSync(path.join(tmpDir, 'analytics', '.last-sync-time'))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, 'analytics', '.last-sync-line'))).toBe(false);
+  });
 });
 
 describe('gstack-community-dashboard', () => {
@@ -394,6 +406,13 @@ describe('gstack-community-dashboard', () => {
     expect(output).toContain('gstack community dashboard');
     // Should not show "not configured" since config.sh exists
     expect(output).not.toContain('Supabase not configured');
+  });
+
+  test('network_egress: off disables remote dashboard access', () => {
+    setConfig('network_egress', 'off');
+    const output = run(`${BIN}/gstack-community-dashboard`);
+    expect(output).toContain('Network egress is disabled');
+    expect(output).toContain('gstack-analytics');
   });
 });
 

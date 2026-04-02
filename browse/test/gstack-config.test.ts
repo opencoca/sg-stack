@@ -144,6 +144,7 @@ describe('gstack-config', () => {
     expect(content).toContain('edit freely');
     expect(content).toContain('proactive:');
     expect(content).toContain('telemetry:');
+    expect(content).toContain('network_egress:');
     expect(content).toContain('auto_upgrade:');
     expect(content).toContain('skill_prefix:');
     expect(content).toContain('routing_declined:');
@@ -165,6 +166,12 @@ describe('gstack-config', () => {
     // get should return the real value, not the comment.
     const { stdout } = run(['get', 'telemetry']);
     expect(stdout).toBe('community');
+  });
+
+  test('network_egress can be set and read', () => {
+    run(['set', 'network_egress', 'off']);
+    const { stdout } = run(['get', 'network_egress']);
+    expect(stdout).toBe('off');
   });
 
   test('existing config file is not overwritten with header', () => {
