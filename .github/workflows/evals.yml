@@ -99,6 +99,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Mask provider secrets
+        shell: bash
+        run: |
+          for secret in \
+            "${{ secrets.ANTHROPIC_API_KEY }}" \
+            "${{ secrets.OPENAI_API_KEY }}" \
+            "${{ secrets.GEMINI_API_KEY }}"; do
+            if [ -n "$secret" ]; then
+              echo "::add-mask::$secret"
+            fi
+          done
+
       # Bun creates root-owned temp dirs during Docker build. GH Actions runs as
       # runner user with HOME=/github/home. Redirect bun's cache to a writable dir.
       - name: Fix bun temp
@@ -144,7 +156,7 @@ jobs:
         with:
           name: eval-${{ matrix.suite.name }}
           path: ~/.gstack-dev/evals/*.json
-          retention-days: 90
+          retention-days: 14
 
   report:
     runs-on: ubicloud-standard-2

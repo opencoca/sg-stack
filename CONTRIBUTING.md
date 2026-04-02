@@ -115,6 +115,8 @@ bun install
 
 Bun auto-loads `.env` — no extra config. Conductor workspaces inherit `.env` from the main worktree automatically (see "Conductor workspaces" below).
 
+Treat `.env` as local-only state. Do not commit it or sync it through plain git. If you need the same secrets on multiple machines, use a secret manager, encrypted git workflow, Syncthing, or another local-only transport outside this repo.
+
 ### Test tiers
 
 | Tier | Command | Cost | What it tests |

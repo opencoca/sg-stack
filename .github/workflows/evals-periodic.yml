@@ -92,6 +92,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Mask provider secrets
+        shell: bash
+        run: |
+          for secret in \
+            "${{ secrets.ANTHROPIC_API_KEY }}" \
+            "${{ secrets.OPENAI_API_KEY }}" \
+            "${{ secrets.GEMINI_API_KEY }}"; do
+            if [ -n "$secret" ]; then
+              echo "::add-mask::$secret"
+            fi
+          done
+
       - name: Fix bun temp
         run: |
           mkdir -p /home/runner/.cache/bun
@@ -126,4 +138,4 @@ jobs:
         with:
           name: eval-periodic-${{ matrix.suite.name }}
           path: ~/.gstack-dev/evals/*.json
-          retention-days: 90
+          retention-days: 14

@@ -112,4 +112,60 @@ describe('Audit compliance', () => {
       }
     }
   });
+
+  test('git does not track local-only state or generated runtime artifacts', () => {
+    const result = Bun.spawnSync(['git', 'ls-files'], {
+      cwd: ROOT,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+
+    expect(result.exitCode).toBe(0);
+
+    const trackedFiles = result.stdout
+      .toString()
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean);
+
+    const forbiddenPatterns = [
+      /^\.env($|\.)/,
+      /^\.claude\//,
+      /^\.codex\//,
+      /^\.gstack\//,
+      /^extension\/\.auth\.json$/,
+      /^browse\/dist\//,
+      /^design\/dist\//,
+      /^\.vscode\/(launch|extensions)\.json$/,
+    ];
+
+    const offenders = trackedFiles.filter(file => {
+      if (file === '.env.example') {
+        return false;
+      }
+      return forbiddenPatterns.some(pattern => pattern.test(file));
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  test('gitignore covers local-only env and editor files', () => {
+    const gitignore = readFileSync(join(ROOT, '.gitignore'), 'utf-8');
+
+    expect(gitignore).toContain('.env');
+    expect(gitignore).toContain('.env.*');
+    expect(gitignore).toContain('extension/.auth.json');
+    expect(gitignore).toContain('.vscode/launch.json');
+    expect(gitignore).toContain('.vscode/extensions.json');
+  });
+
+  test('dockerignore excludes local secrets and agent state from build context', () => {
+    const dockerignore = readFileSync(join(ROOT, '.dockerignore'), 'utf-8');
+
+    expect(dockerignore).toContain('.env');
+    expect(dockerignore).toContain('.env.*');
+    expect(dockerignore).toContain('.gstack');
+    expect(dockerignore).toContain('.claude');
+    expect(dockerignore).toContain('.codex');
+  });
 });

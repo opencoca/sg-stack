@@ -325,6 +325,34 @@ The same rule applies to other services:
 - If a service only supports env-based auth, keep its secret in `.env` locally or inject it from your cloud harness when `.env` is absent.
 - Extend `ENV_PASSTHROUGH_VARS` and add the mount in the `Makefile` when you add a new provider-specific CLI.
 
+### Use The Published Image Without Cloning gstack
+
+You do not need a full checkout of this repo to use the published container. Pull the image, mount the project you want to work on into `/workspace`, and inject auth at runtime.
+
+```bash
+docker pull ghcr.io/opencoca/gstack:latest
+
+docker run --rm -it \
+        --env-file .env \
+        -v "$PWD":/workspace \
+        -v gstack-claude:/root/.claude \
+        -v gstack-codex:/root/.codex \
+        -v gstack-config:/root/.config \
+        -v gstack-cache:/root/.cache \
+        -v gstack-local-share:/root/.local/share \
+        -w /workspace \
+        ghcr.io/opencoca/gstack:latest \
+        bash -lc 'claude'
+```
+
+Use the same pattern for `bun`, `claude auth status`, or any other runtime command. The image only needs the repo or project you actually want to operate on mounted into `/workspace`.
+
+Keep local-only state out of git:
+
+- Do not commit or plain-git sync `.env`, auth tokens, Claude/Codex state, or Docker volume contents.
+- Treat `/root/.claude`, `/root/.codex`, `/root/.config`, `/root/.cache`, and `/root/.local/share` as machine-local state even when they persist across container restarts.
+- If you need to move secrets or local agent state between machines, use an encrypted secret manager, encrypted git workflow, Syncthing, or another local-only transport instead of this repo.
+
 ## Privacy & Telemetry
 
 gstack includes **opt-in** usage telemetry to help improve the project. Here's exactly what happens:
