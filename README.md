@@ -246,11 +246,30 @@ I open sourced how I build software. You can fork it and make it your own.
 | Doc | What it covers |
 |-----|---------------|
 | [Skill Deep Dives](docs/skills.md) | Philosophy, examples, and workflow for every skill (includes Greptile integration) |
+| [Stack Health Harness](docs/stack-health-harness.md) | Reusable health scanner for telemetry, manipulation-pattern, and integrity checks |
 | [Builder Ethos](ETHOS.md) | Builder philosophy: Boil the Lake, Search Before Building, three layers of knowledge |
 | [Architecture](ARCHITECTURE.md) | Design decisions and system internals |
 | [Browser Reference](BROWSER.md) | Full command reference for `/browse` |
 | [Contributing](CONTRIBUTING.md) | Dev setup, testing, contributor mode, and dev mode |
 | [Changelog](CHANGELOG.md) | What's new in every version |
+
+## Stack Health
+
+gstack now includes a reusable stack-health harness for catching both hard integrity regressions and softer policy debt.
+
+- `bun run stack:health` runs the full profile.
+- `bun run stack:health --json` emits machine-readable output.
+- `bun run stack:health --strict-warnings` fails on warnings as well as errors.
+
+The harness currently checks:
+
+- generated skill freshness and touchfile consistency
+- audit invariants already enforced elsewhere in the repo
+- outbound telemetry and hosted-egress surfaces
+- founder funneling, authority conversion, and identity-expansion copy
+- mania-adjacent productivity hype, coercive urgency, and dependency-building language
+
+The full rule profile and fixture-backed manipulation-policy tests are documented in [docs/stack-health-harness.md](docs/stack-health-harness.md).
 
 ## Privacy & Telemetry
 
