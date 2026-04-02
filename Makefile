@@ -386,17 +386,55 @@ hotfix: require_gitflow_next
 	@echo "  6. make ghcr_login               # Authenticate with GHCR"
 	@echo "  7. make hotfix_and_push_GHCR     # Finish hotfix + push to GHCR"
 
+# Helper: clear stale git-flow merge state from a prior interrupted finish
+define clear_stale_gitflow_state
+	if [ -f .git/gitflow/state/merge.json ] && [ ! -f .git/MERGE_HEAD ]; then \
+		echo "Clearing stale git-flow merge state from prior run..."; \
+		rm -f .git/gitflow/state/merge.json; \
+	fi
+endef
+
 release_finish: require_gitflow_next
-	@echo "=== Finishing release ==="
-	@echo "Merging to master, tagging, pushing..."
-	git flow release finish && git push origin develop && git push origin master && git push --tags && git checkout develop
+	@echo "=== Finishing release $(RELEASE_VERSION) ==="
+	@# Step 1: Clear stale git-flow state if no real merge is in progress
+	@$(clear_stale_gitflow_state)
+	@# Step 2: Try git-flow finish (--no-fetch: release branches are never pushed)
+	@# Step 3: If git-flow fails, do the merge/tag/cleanup manually
+	@git flow release finish --no-fetch || ( \
+		echo ""; \
+		echo "git-flow finish failed — completing release/$(RELEASE_VERSION) manually..."; \
+		rm -f .git/gitflow/state/merge.json; \
+		git checkout master && \
+		git merge --no-ff --no-edit release/$(RELEASE_VERSION) && \
+		(git tag -a "$(RELEASE_VERSION)" -m "Release $(RELEASE_VERSION)" 2>/dev/null || echo "  Tag $(RELEASE_VERSION) already exists") && \
+		git checkout develop && \
+		git merge --no-ff --no-edit master && \
+		git branch -d release/$(RELEASE_VERSION) \
+	)
+	@# Step 4: Push everything
+	@git push origin develop && git push origin master && git push --tags
+	@git checkout develop
 	@echo ""
-	@echo "=== Release complete ==="
+	@echo "=== Release $(RELEASE_VERSION) complete ==="
 	@echo "Tag: $$(git tag --sort=-v:refname | head -n 1)"
 
 hotfix_finish: require_gitflow_next
 	@echo "=== Finishing hotfix ==="
-	git flow hotfix finish && git push origin develop && git push origin master && git push --tags && git checkout develop
+	@$(clear_stale_gitflow_state)
+	@git flow hotfix finish --no-fetch || ( \
+		echo ""; \
+		echo "git-flow hotfix finish failed — completing manually..."; \
+		rm -f .git/gitflow/state/merge.json; \
+		HOTFIX_VER=$$(git rev-parse --abbrev-ref HEAD | sed 's/^hotfix\///'); \
+		git checkout master && \
+		git merge --no-ff --no-edit hotfix/$$HOTFIX_VER && \
+		(git tag -a "$$HOTFIX_VER" -m "Hotfix $$HOTFIX_VER" 2>/dev/null || echo "  Tag $$HOTFIX_VER already exists") && \
+		git checkout develop && \
+		git merge --no-ff --no-edit master && \
+		git branch -d hotfix/$$HOTFIX_VER \
+	)
+	@git push origin develop && git push origin master && git push --tags
+	@git checkout develop
 
 release_and_push_GHCR: release_finish
 	@echo ""
