@@ -1,5 +1,36 @@
 # TODOS
 
+## Current Focus
+
+### Use and human testing
+
+**What:** Prioritize real usage, dogfooding, and human testing over more platform hardening work for the next stretch.
+
+**Why:** The next bottleneck is not another layer of repo policy. It is whether people can actually use this comfortably, whether workflows hold up under real sessions, and where human testers still hit friction.
+
+**Context:** Security and local-state guardrails have been tightened enough for now: runtime-only auth guidance is documented, local-only state is ignored, Docker build context excludes secrets, CI has a dedicated security policy gate, and Bun install in Docker is checksum-verified. The next useful signal should come from real users and human testing sessions, not more speculative infra work.
+
+**Effort:** Ongoing
+**Priority:** P0
+
+## Future planning
+
+### Deferred security follow-ups
+
+**What:** Keep the next security layer planned, but explicitly defer implementation until after the current use and human-testing push.
+
+**Why:** These are worthwhile follow-ups, but they are no longer the immediate bottleneck.
+
+**Context:** Future items to revisit:
+
+- current-tree and git-history secret scan command wired into the security gate
+- dependency and supply-chain audit pass in CI
+- sensitive-path diff checks for workflows, Dockerfiles, telemetry scripts, and publish surfaces
+- `CODEOWNERS` once the intended maintainer handles are known
+
+**Effort:** M
+**Priority:** P2
+
 ## Sidebar Security
 
 ### ML Prompt Injection Classifier
