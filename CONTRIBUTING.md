@@ -128,6 +128,7 @@ Treat `.env` as local-only state. Do not commit it or sync it through plain git.
 
 ```bash
 bun test                     # Tier 1 only (runs on every commit, <5s)
+bun run security:check       # Repo security and local-state policy gate
 bun run test:e2e             # Tier 2: E2E only (needs EVALS=1, can't run inside Claude Code)
 bun run test:evals           # Tier 2 + 3 combined (~$4/run)
 ```
