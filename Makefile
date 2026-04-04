@@ -43,7 +43,6 @@ SAFE_GIT_BRANCH := $(shell echo $(SAFE_GIT_BRANCH) | tr '[:upper:]' '[:lower:]')
 CONTAINER_NAME ?= $(shell echo $(GIT_REPO_SLUG) | tr '/' '-')
 DOCKERFILE ?= Dockerfile
 BUILD_CONTEXT ?= .
-BASE_IMAGE ?= mcr.microsoft.com/playwright:v1.58.2-noble
 BUN_VERSION ?= 1.3.10
 RUN_COMMAND ?= bun run skill:check
 TEST_COMMAND ?= bun test
@@ -98,36 +97,59 @@ DOCKER_RUN_ENV_PASSTHROUGH := $(foreach var,$(ENV_PASSTHROUGH_VARS),$(if $(value
 DOCKER_RUN_AUTH_MOUNTS :=
 ifeq ($(ENABLE_ACCOUNT_MOUNTS),1)
 ifneq (,$(wildcard $(CLAUDE_CONFIG_DIR)))
-DOCKER_RUN_AUTH_MOUNTS += -v $(CLAUDE_CONFIG_DIR):/root/.claude
+DOCKER_RUN_AUTH_MOUNTS += -v $(CLAUDE_CONFIG_DIR):/home/gstack/.claude
 endif
 ifneq (,$(wildcard $(CODEX_CONFIG_DIR)))
-DOCKER_RUN_AUTH_MOUNTS += -v $(CODEX_CONFIG_DIR):/root/.codex
+DOCKER_RUN_AUTH_MOUNTS += -v $(CODEX_CONFIG_DIR):/home/gstack/.codex
 endif
 endif
 
 DOCKER_RUN_STATE_MOUNTS :=
 ifeq ($(ENABLE_STATE_VOLUMES),1)
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-config:/root/.config
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-cache:/root/.cache
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-local-share:/root/.local/share
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-config:/home/gstack/.config
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-cache:/home/gstack/.cache
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-local-share:/home/gstack/.local/share
 ifeq ($(ENABLE_ACCOUNT_MOUNTS),0)
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-claude:/root/.claude
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-codex:/root/.codex
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-claude:/home/gstack/.claude
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-codex:/home/gstack/.codex
 else
 ifeq (,$(wildcard $(CLAUDE_CONFIG_DIR)))
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-claude:/root/.claude
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-claude:/home/gstack/.claude
 endif
 ifeq (,$(wildcard $(CODEX_CONFIG_DIR)))
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-codex:/root/.codex
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-codex:/home/gstack/.codex
 endif
 endif
 endif
 
+# Host font mounts (read-only) — screenshots render with user's actual fonts.
+# No fonts baked into the image; container falls back to default sans-serif without mounts.
+# Set ENABLE_FONT_MOUNTS=1 to mount host fonts (requires Docker file sharing config on macOS).
+ENABLE_FONT_MOUNTS ?= 0
+
+DOCKER_RUN_FONT_MOUNTS :=
+ifeq ($(ENABLE_FONT_MOUNTS),1)
+ifneq (,$(wildcard /System/Library/Fonts))
+# macOS: system + user-installed fonts
+DOCKER_RUN_FONT_MOUNTS += -v /System/Library/Fonts:/usr/share/fonts/system:ro
+ifneq (,$(wildcard /Library/Fonts))
+DOCKER_RUN_FONT_MOUNTS += -v /Library/Fonts:/usr/share/fonts/local:ro
+endif
+else ifneq (,$(wildcard /usr/share/fonts))
+# Linux: standard font directory
+DOCKER_RUN_FONT_MOUNTS += -v /usr/share/fonts:/usr/share/fonts/host:ro
+endif
+endif
+
+# Chromium sandbox needs user namespaces which Docker restricts by default.
+# seccomp=unconfined lets the non-root gstack user run Chromium with sandbox enabled.
 DOCKER_RUN_BASE_ARGS := --rm \
+	--security-opt seccomp=unconfined \
 	$(ENV_FILE_FLAG) \
 	$(DOCKER_RUN_ENV_PASSTHROUGH) \
 	$(DOCKER_RUN_AUTH_MOUNTS) \
-	$(DOCKER_RUN_STATE_MOUNTS)
+	$(DOCKER_RUN_STATE_MOUNTS) \
+	$(DOCKER_RUN_FONT_MOUNTS)
 
 DOCKER_RUN_ARGS := $(DOCKER_RUN_BASE_ARGS) \
 	--name $(CONTAINER_NAME)
@@ -157,7 +179,6 @@ it_build:
 	@export DOCKER_BUILDKIT=1 && \
 	$(CONTAINER_RUNTIME) build --load \
 		-f $(DOCKERFILE) \
-		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 		--build-arg BUN_VERSION=$(BUN_VERSION) \
 		-t $(IMAGE_NAME):$(IMAGE_TAG) \
 		-t $(IMAGE_NAME):latest \
@@ -171,7 +192,6 @@ it_build_no_cache:
 	@export DOCKER_BUILDKIT=1 && \
 	$(CONTAINER_RUNTIME) build --no-cache --load \
 		-f $(DOCKERFILE) \
-		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 		--build-arg BUN_VERSION=$(BUN_VERSION) \
 		-t $(IMAGE_NAME):$(IMAGE_TAG) \
 		-t $(IMAGE_NAME):latest \
@@ -220,6 +240,19 @@ it_build_n_test_fresh: it_build
 	@echo "Running tests in a fresh container..."
 	$(CONTAINER_RUNTIME) run $(DOCKER_RUN_BASE_ARGS) $(IMAGE_NAME):$(IMAGE_TAG) bash -lc '$(TEST_COMMAND)'
 	@echo "Fresh container test run complete."
+
+# Smoke test: screenshot a URL inside the container to verify Chromium + fonts.
+# Usage: make it_smoke                              (defaults to example.com)
+#        make it_smoke SMOKE_URL=https://claude.ai   (custom URL)
+SMOKE_URL ?= https://example.com
+
+it_smoke: it_build
+	@echo "=== Smoke test: screenshotting $(SMOKE_URL) ==="
+	$(CONTAINER_RUNTIME) run $(DOCKER_RUN_BASE_ARGS) \
+		--name $(CONTAINER_NAME)-smoke \
+		$(IMAGE_NAME):$(IMAGE_TAG) \
+		bash -lc 'bun run dev goto $(SMOKE_URL) && bun run dev screenshot /tmp/smoke.png && echo "Screenshot saved to /tmp/smoke.png"'
+	@echo "=== Smoke test passed ==="
 
 # ---------------------------------------------------------------------------
 # Local test harness
@@ -286,7 +319,6 @@ define build_multi_arch
 	@make ensure_builder
 	docker buildx build --platform linux/amd64,linux/arm64 \
 		-f $(DOCKERFILE) \
-		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 		--build-arg BUN_VERSION=$(BUN_VERSION) \
 		-t $(1):$(IMAGE_TAG) \
 		-t $(1):latest \
@@ -459,7 +491,7 @@ hotfix_and_push_GHCR: hotfix_finish
 .PHONY: release help it_stop it_clean it_gone \
 	it_build it_build_no_cache it_run it_run_dev it_run_ghcr \
 	it_explore it_claude \
-	it_build_n_run it_build_n_run_no_cache it_build_n_test_fresh \
+	it_build_n_run it_build_n_run_no_cache it_build_n_test_fresh it_smoke \
 	it_deploy ghcr_login ensure_builder it_build_multi_arch_push_GHCR \
 	health_check health_check_json health_check_strict health_note_init health_note_record_hash \
 	show_version bump_release_version first_release require_gitflow_next \
