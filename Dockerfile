@@ -91,6 +91,12 @@ RUN useradd -m -s /bin/bash gstack \
 WORKDIR /workspace
 # Browser binary matching project's playwright version
 COPY --from=deps --chown=gstack:gstack /ms-playwright /ms-playwright
+# Chromium sandbox is redundant inside Docker (Docker provides its own isolation).
+# Wrap the binary with --no-sandbox so users don't need --security-opt seccomp=unconfined.
+RUN SHELL_BIN=$(find /ms-playwright -name headless_shell -type f | head -1) \
+    && mv "$SHELL_BIN" "${SHELL_BIN}.real" \
+    && printf '#!/bin/bash\nexec "%s.real" --no-sandbox "$@"\n' "$SHELL_BIN" > "$SHELL_BIN" \
+    && chmod +x "$SHELL_BIN"
 # Built workspace (node_modules + compiled artifacts)
 COPY --from=build --chown=gstack:gstack /workspace /workspace
 
