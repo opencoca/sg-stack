@@ -1,51 +1,60 @@
 # syntax=docker/dockerfile:1.7
 
-ARG BASE_IMAGE=mcr.microsoft.com/playwright:v1.58.2-noble
 ARG BUN_VERSION=1.3.10
-ARG BUN_INSTALL_SHA=bab8acfb046aac8c72407bdcce903957665d655d7acaa3e11c7c4616beae68dd
 
-FROM ${BASE_IMAGE} AS base
-
-ARG BUN_VERSION
-ARG BUN_INSTALL_SHA
+FROM oven/bun:${BUN_VERSION}-slim AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive \
     HOME=/root \
-    BUN_INSTALL=/usr/local \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    # Prevent Playwright npm postinstall from downloading browsers
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     PATH=/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash \
-    ca-certificates \
-    curl \
-    git \
-    jq \
-    python3 \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
+# System deps + Claude Code (single layer, aggressive cleanup)
+# - Manual Playwright deps (no install-deps: skip Xvfb, all font packages)
+# - NO baked-in fonts — host fonts mounted read-only at runtime (see Makefile)
+# - Browser binary installed in deps stage to match project's pinned Playwright version
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        bash ca-certificates curl git \
+        # Chromium headless-shell runtime libraries
+        libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 \
+        libdbus-1-3 libdrm2 libexpat1 libgbm1 libglib2.0-0 \
+        libnspr4 libnss3 libx11-6 libxcb1 libxcomposite1 \
+        libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
+        # Font rendering (fonts themselves are mounted from host at runtime)
+        libfontconfig1 libfreetype6 \
+    && bun install -g @anthropic-ai/claude-code \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+              /usr/share/doc/* /usr/share/man/*
 
-RUN mkdir -p /root/.claude /root/.codex /workspace
+RUN mkdir -p /root/.claude /root/.codex /home/gstack/.claude /home/gstack/.codex /workspace
 
+# Container entrypoint: manage Claude config symlinks and volume dirs
 RUN cat <<'EOF' >/usr/local/bin/gstack-container-init
 #!/usr/bin/env bash
 set -euo pipefail
 
-mkdir -p /root/.claude /root/.codex /root/.config /root/.cache /root/.local/share
+H="${HOME:-/root}"
+# Create dirs (may fail if volume-mounted as root — that's OK, the mount provides them)
+mkdir -p "$H/.claude" "$H/.codex" "$H/.config" "$H/.cache" "$H/.local/share" 2>/dev/null || true
 
 # Persist Claude's top-level config file inside the Claude volume.
-if [ ! -L /root/.claude.json ]; then
-    rm -f /root/.claude.json
-    ln -s /root/.claude/.claude.json /root/.claude.json
+# Non-fatal: fails gracefully when volumes are root-owned (e.g. first Docker run).
+if [ ! -L "$H/.claude.json" ] 2>/dev/null; then
+    rm -f "$H/.claude.json" 2>/dev/null || true
+    ln -s "$H/.claude/.claude.json" "$H/.claude.json" 2>/dev/null || true
 fi
 
-# If Claude left only a backup, restore the newest backup as the primary config.
-if [ ! -s /root/.claude/.claude.json ]; then
-    latest_backup="$(ls -1t /root/.claude/backups/.claude.json.backup.* 2>/dev/null | head -n 1 || true)"
+# Restore newest backup if primary config is missing
+if [ ! -s "$H/.claude/.claude.json" ] 2>/dev/null; then
+    latest_backup="$(ls -1t "$H/.claude/backups/.claude.json.backup."* 2>/dev/null | head -n 1 || true)"
     if [ -n "$latest_backup" ]; then
-        cp "$latest_backup" /root/.claude/.claude.json
+        cp "$latest_backup" "$H/.claude/.claude.json" 2>/dev/null || true
     fi
 fi
 
@@ -53,38 +62,39 @@ exec "$@"
 EOF
 RUN chmod +x /usr/local/bin/gstack-container-init
 
-RUN tmpfile="$(mktemp)" \
-        && curl -fsSL https://bun.sh/install -o "$tmpfile" \
-        && actual_sha="$(sha256sum "$tmpfile" | awk '{print $1}')" \
-        && if [ "$actual_sha" != "$BUN_INSTALL_SHA" ]; then \
-                echo "ERROR: bun install script checksum mismatch" >&2; \
-                echo "  expected: $BUN_INSTALL_SHA" >&2; \
-                echo "  got:      $actual_sha" >&2; \
-                rm -f "$tmpfile"; \
-                exit 1; \
-            fi \
-        && BUN_VERSION="${BUN_VERSION}" bash "$tmpfile" \
-        && rm -f "$tmpfile"
-RUN bun install -g @anthropic-ai/claude-code
-
 WORKDIR /workspace
 
+# --- deps stage: install project dependencies + matching browser ---
 FROM base AS deps
-
 COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile 2>/dev/null || bun install
+# Install headless-shell matching the project's pinned playwright version
+# (must happen here, not in base, to avoid version mismatch)
+RUN bunx playwright install chromium-headless-shell
 
+# --- build stage ---
 FROM deps AS build
-
 COPY . .
-RUN bun run build
+# Only regenerate SKILL.md files — skip binary compilation (not needed in container,
+# everything runs from source via `bun run dev`). Saves ~230 MB.
+RUN bun run gen:skill-docs --host all
 
+# --- runtime ---
 FROM base AS runtime
 
-COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile 2>/dev/null || bun install
+# Non-root user: Chromium refuses to run as root without --no-sandbox.
+# A real user lets the sandbox work properly (same approach as Dockerfile.ci).
+RUN useradd -m -s /bin/bash gstack \
+    && mkdir -p /ms-playwright /workspace /home/gstack/.gstack \
+    && chown -R gstack:gstack /workspace /home/gstack/.gstack
 
-COPY --from=build /workspace /workspace
+WORKDIR /workspace
+# Browser binary matching project's playwright version
+COPY --from=deps --chown=gstack:gstack /ms-playwright /ms-playwright
+# Built workspace (node_modules + compiled artifacts)
+COPY --from=build --chown=gstack:gstack /workspace /workspace
 
+ENV HOME=/home/gstack
+USER gstack
 ENTRYPOINT ["/usr/local/bin/gstack-container-init"]
 CMD ["bash"]
