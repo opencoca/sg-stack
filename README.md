@@ -286,79 +286,83 @@ The full rule profile and fixture-backed manipulation-policy tests are documente
 
 ## Containers & GHCR
 
-The root `Makefile` now keeps the standard org release/GHCR flow, but retargets it to gstack's Bun and Playwright runtime.
+The runtime image is **1.49 GB** (single arch) — slimmed from 4.57 GB by switching to
+`oven/bun:slim`, Chromium headless-shell only, no baked-in fonts, and a non-root
+`gstack` user. Multi-arch (amd64 + arm64) images are published to GHCR on every release.
 
-- `make it_build` builds the runtime image from the root `Dockerfile`.
-- `make it_run` smoke-tests the image with `bun run skill:check`.
-- `make it_explore` opens an interactive `-it` shell with the current repo bind-mounted into `/workspace`.
-- `make it_claude` jumps straight into `claude` inside that same interactive container environment.
-- `make it_run_dev` is kept as an alias for `make it_explore`.
-- `make it_build_multi_arch_push_GHCR` publishes the runtime image to `ghcr.io/<org>/<repo>`.
-- `make minor_release`, `make patch_release`, `make major_release`, and `make hotfix` preserve the existing git-flow release entrypoints.
-
-The Docker build accepts an overridable base image, so the team can swap in its standard container without rewriting the file:
-
-- `make it_build BASE_IMAGE=ghcr.io/your-org/your-ai-base:latest`
-
-Version bumps in the Makefile now update both `VERSION` and `package.json`, which keeps container tags and Bun package metadata aligned.
-
-The runtime image also installs `claude-code` with Bun, so interactive exploration containers have both `bun` and `claude` available out of the box.
-
-If you want to override the Claude entry command, pass `CLAUDE_COMMAND`, for example:
-
-- `make it_claude CLAUDE_COMMAND='claude --help'`
-
-Auth handling is runtime-only:
-
-- `.env` is the primary auth source for `make it_run`, `make it_run_dev`, and `make test_fresh`.
-- If `.env` is missing, selected env vars from the caller or cloud harness are forwarded into the container by name.
-- No auth values are passed as Docker build args or baked into image layers.
-- The default container path is isolated: it uses container-owned persisted volumes for Claude/Codex and other home-directory state, so it does not touch your personal `~/.claude` or `~/.codex`.
-- If you explicitly want to reuse host account login state, set `ENABLE_ACCOUNT_MOUNTS=1`.
-- If you need to run without mounted home-directory state, put the account-backed Anthropic session token in `.env` as `ANTHROPIC_AUTH_TOKEN`; treat it like any other secret and rotate it when the upstream login changes.
-- Leave `ENABLE_ACCOUNT_MOUNTS=0` for the safer default that avoids polluting personal host state.
-
-Persistence across container restarts works in two layers:
-
-- The repo itself is bind-mounted into `/workspace`, so dotfiles inside the repo continue to live on the host checkout.
-- Named Docker volumes back `/root/.claude` and `/root/.codex` by default, so container auth/session state survives restarts without writing into your personal host directories.
-- If you opt in with `ENABLE_ACCOUNT_MOUNTS=1`, host `~/.claude` and `~/.codex` are mounted instead.
-- Additional container-side state in `/root/.config`, `/root/.cache`, and `/root/.local/share` is stored in named Docker volumes by default, so CLI/session state survives container teardown and recreation.
-- Set `ENABLE_STATE_VOLUMES=0` if you want fully ephemeral container-side state.
-
-The same rule applies to other services:
-
-- If a service has a CLI with persistent login state, mount that config directory into the container instead of baking or copying credentials.
-- If a service only supports env-based auth, keep its secret in `.env` locally or inject it from your cloud harness when `.env` is absent.
-- Extend `ENV_PASSTHROUGH_VARS` and add the mount in the `Makefile` when you add a new provider-specific CLI.
-
-### Use The Published Image Without Cloning gstack
-
-You do not need a full checkout of this repo to use the published container. Pull the image, mount the project you want to work on into `/workspace`, and inject auth at runtime.
+### Use the published image without cloning
 
 ```bash
 docker pull ghcr.io/opencoca/gstack:latest
 
+# Run Claude Code interactively
 docker run --rm -it \
-        --env-file .env \
-        -v "$PWD":/workspace \
-        -v gstack-claude:/root/.claude \
-        -v gstack-codex:/root/.codex \
-        -v gstack-config:/root/.config \
-        -v gstack-cache:/root/.cache \
-        -v gstack-local-share:/root/.local/share \
-        -w /workspace \
-        ghcr.io/opencoca/gstack:latest \
-        bash -lc 'claude'
+  --env-file .env \
+  -v "$PWD":/workspace \
+  -v gstack-claude:/home/gstack/.claude \
+  -v gstack-codex:/home/gstack/.codex \
+  -v gstack-config:/home/gstack/.config \
+  -v gstack-cache:/home/gstack/.cache \
+  -v gstack-local-share:/home/gstack/.local/share \
+  -w /workspace \
+  ghcr.io/opencoca/gstack:latest \
+  claude
+
+# Run a skill check
+docker run --rm ghcr.io/opencoca/gstack:latest bash -lc 'bun run skill:check'
+
+# Screenshot a URL (headless Chromium)
+docker run --rm ghcr.io/opencoca/gstack:latest \
+  bash -lc 'bun run dev goto https://example.com && bun run dev screenshot /tmp/smoke.png'
 ```
 
-Use the same pattern for `bun`, `claude auth status`, or any other runtime command. The image only needs the repo or project you actually want to operate on mounted into `/workspace`.
+No `--security-opt` flags needed — the Chromium sandbox is handled inside the image.
 
-Keep local-only state out of git:
+### Build and test locally
 
-- Do not commit or plain-git sync `.env`, auth tokens, Claude/Codex state, or Docker volume contents.
-- Treat `/root/.claude`, `/root/.codex`, `/root/.config`, `/root/.cache`, and `/root/.local/share` as machine-local state even when they persist across container restarts.
-- If you need to move secrets or local agent state between machines, use an encrypted secret manager, encrypted git workflow, Syncthing, or another local-only transport instead of this repo.
+```bash
+make it_build         # build the runtime image
+make it_run           # smoke-test with bun run skill:check
+make it_smoke         # screenshot example.com inside the container
+make it_smoke SMOKE_URL=https://yoursite.com  # custom URL
+make it_explore       # interactive shell with repo bind-mounted
+make it_claude        # Claude Code inside the container
+```
+
+### Image architecture
+
+The Dockerfile uses a multi-stage build on `oven/bun:slim` (Debian):
+
+| What | Why |
+|------|-----|
+| Chromium headless-shell only | 330 MB vs 942 MB for full Chrome for Testing |
+| No baked-in fonts | Host fonts mounted read-only at runtime (`ENABLE_FONT_MOUNTS=1`) |
+| No Node.js | Bun runs `claude-code` natively |
+| No compiled binaries | Everything runs from source via `bun run dev` |
+| Non-root `gstack` user | Chromium sandbox works without `--security-opt` |
+| `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` | Prevents duplicate browser in `node_modules` |
+
+### Auth and persistence
+
+- `.env` is the primary auth source. If absent, selected env vars are forwarded by name.
+- No auth values are baked into image layers.
+- Named Docker volumes back `/home/gstack/.claude`, `.codex`, `.config`, `.cache`, and `.local/share` by default — session state survives restarts.
+- Set `ENABLE_ACCOUNT_MOUNTS=1` to mount host `~/.claude` and `~/.codex` instead.
+- Set `ENABLE_STATE_VOLUMES=0` for fully ephemeral container state.
+
+### Release workflow
+
+```bash
+make minor_release          # create release/X.Y.0.0 branch
+make bump_release_version   # update VERSION + package.json
+# git add VERSION package.json && git commit
+make it_build && make it_smoke   # build + verify
+make release_and_push_GHCR      # finish release, tag, push to GHCR
+```
+
+The git-flow integration uses `--no-fetch` so release branches that only exist locally
+don't fail. If `git flow release finish` fails, the Makefile falls back to manual
+merge/tag/cleanup automatically.
 
 ## Privacy & Telemetry
 

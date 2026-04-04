@@ -141,10 +141,7 @@ DOCKER_RUN_FONT_MOUNTS += -v /usr/share/fonts:/usr/share/fonts/host:ro
 endif
 endif
 
-# Chromium sandbox needs user namespaces which Docker restricts by default.
-# seccomp=unconfined lets the non-root gstack user run Chromium with sandbox enabled.
 DOCKER_RUN_BASE_ARGS := --rm \
-	--security-opt seccomp=unconfined \
 	$(ENV_FILE_FLAG) \
 	$(DOCKER_RUN_ENV_PASSTHROUGH) \
 	$(DOCKER_RUN_AUTH_MOUNTS) \
