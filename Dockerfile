@@ -70,7 +70,16 @@ COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile 2>/dev/null || bun install
 # Install headless-shell matching the project's pinned playwright version
 # (must happen here, not in base, to avoid version mismatch)
-RUN bunx playwright install chromium-headless-shell
+# Chromium sandbox is redundant inside Docker (Docker provides its own isolation).
+# Install headless-shell, then wrap the binary with --no-sandbox so users don't
+# need --security-opt seccomp=unconfined. Done here (not runtime stage) so the
+# wrapper is always in the same layer as the binary.
+RUN bunx playwright install chromium-headless-shell \
+    && SHELL_BIN=$(find /ms-playwright \( -name 'chrome-headless-shell' -o -name 'headless_shell' \) -type f | head -1) \
+    && [ -n "$SHELL_BIN" ] && echo "Wrapping $SHELL_BIN with --no-sandbox" \
+    && mv "$SHELL_BIN" "${SHELL_BIN}.real" \
+    && printf '#!/bin/bash\nexec "%s.real" --no-sandbox "$@"\n' "$SHELL_BIN" > "$SHELL_BIN" \
+    && chmod +x "$SHELL_BIN"
 
 # --- build stage ---
 FROM deps AS build
@@ -91,12 +100,6 @@ RUN useradd -m -s /bin/bash gstack \
 WORKDIR /workspace
 # Browser binary matching project's playwright version
 COPY --from=deps --chown=gstack:gstack /ms-playwright /ms-playwright
-# Chromium sandbox is redundant inside Docker (Docker provides its own isolation).
-# Wrap the binary with --no-sandbox so users don't need --security-opt seccomp=unconfined.
-RUN SHELL_BIN=$(find /ms-playwright -name headless_shell -type f | head -1) \
-    && mv "$SHELL_BIN" "${SHELL_BIN}.real" \
-    && printf '#!/bin/bash\nexec "%s.real" --no-sandbox "$@"\n' "$SHELL_BIN" > "$SHELL_BIN" \
-    && chmod +x "$SHELL_BIN"
 # Built workspace (node_modules + compiled artifacts)
 COPY --from=build --chown=gstack:gstack /workspace /workspace
 
