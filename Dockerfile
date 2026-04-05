@@ -7,13 +7,12 @@ FROM oven/bun:${BUN_VERSION}-slim AS base
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    HOME=/root \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     # Prevent Playwright npm postinstall from downloading browsers
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    PATH=/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+    PATH=/home/agent/.bun/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# System deps + Claude Code (single layer, aggressive cleanup)
+# System deps (single layer, aggressive cleanup)
 # - Manual Playwright deps (no install-deps: skip Xvfb, all font packages)
 # - NO baked-in fonts — host fonts mounted read-only at runtime (see Makefile)
 # - Browser binary installed in deps stage to match project's pinned Playwright version
@@ -27,19 +26,32 @@ RUN apt-get update \
         libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2 \
         # Font rendering (fonts themselves are mounted from host at runtime)
         libfontconfig1 libfreetype6 \
-    && bun install -g @anthropic-ai/claude-code \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-              /usr/share/doc/* /usr/share/man/*
+              /usr/share/doc/* /usr/share/man/* \
+    && ln -s /usr/local/bin/bun /usr/local/bin/node
 
-RUN mkdir -p /root/.claude /root/.codex /home/gstack/.claude /home/gstack/.codex /workspace
+# Non-root user: created early so Claude Code installs under /home/agent/.bun/
+# and is accessible without permission hacks. Also needed for Chromium sandbox.
+RUN useradd -m -s /bin/bash agent \
+    && mkdir -p /ms-playwright /workspace /home/agent/.claude /home/agent/.codex \
+    && chown -R agent:agent /workspace
+
+# Install Claude Code as agent so modules + binary land in /home/agent/.bun/
+# BUN_INSTALL_BIN is required because bun defaults to linking next to its own
+# binary (/usr/local/bin/) which is root-owned.
+USER agent
+ENV HOME=/home/agent
+RUN mkdir -p /home/agent/.bun/bin \
+    && BUN_INSTALL_BIN=/home/agent/.bun/bin bun install -g @anthropic-ai/claude-code
+USER root
 
 # Container entrypoint: manage Claude config symlinks and volume dirs
-RUN cat <<'EOF' >/usr/local/bin/gstack-container-init
+RUN cat <<'EOF' >/usr/local/bin/agent-container-init
 #!/usr/bin/env bash
 set -euo pipefail
 
-H="${HOME:-/root}"
+H="${HOME:-/home/agent}"
 # Create dirs (may fail if volume-mounted as root — that's OK, the mount provides them)
 mkdir -p "$H/.claude" "$H/.codex" "$H/.config" "$H/.cache" "$H/.local/share" 2>/dev/null || true
 
@@ -60,7 +72,7 @@ fi
 
 exec "$@"
 EOF
-RUN chmod +x /usr/local/bin/gstack-container-init
+RUN chmod +x /usr/local/bin/agent-container-init
 
 WORKDIR /workspace
 
@@ -70,7 +82,16 @@ COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile 2>/dev/null || bun install
 # Install headless-shell matching the project's pinned playwright version
 # (must happen here, not in base, to avoid version mismatch)
-RUN bunx playwright install chromium-headless-shell
+# Chromium sandbox is redundant inside Docker (Docker provides its own isolation).
+# Install headless-shell, then wrap the binary with --no-sandbox so users don't
+# need --security-opt seccomp=unconfined. Done here (not runtime stage) so the
+# wrapper is always in the same layer as the binary.
+RUN bunx playwright install chromium-headless-shell \
+    && SHELL_BIN=$(find /ms-playwright \( -name 'chrome-headless-shell' -o -name 'headless_shell' \) -type f | head -1) \
+    && [ -n "$SHELL_BIN" ] && echo "Wrapping $SHELL_BIN with --no-sandbox" \
+    && mv "$SHELL_BIN" "${SHELL_BIN}.real" \
+    && printf '#!/bin/bash\nexec "%s.real" --no-sandbox "$@"\n' "$SHELL_BIN" > "$SHELL_BIN" \
+    && chmod +x "$SHELL_BIN"
 
 # --- build stage ---
 FROM deps AS build
@@ -82,25 +103,13 @@ RUN bun run gen:skill-docs --host all
 # --- runtime ---
 FROM base AS runtime
 
-# Non-root user: Chromium refuses to run as root without --no-sandbox.
-# A real user lets the sandbox work properly (same approach as Dockerfile.ci).
-RUN useradd -m -s /bin/bash gstack \
-    && mkdir -p /ms-playwright /workspace /home/gstack/.gstack \
-    && chown -R gstack:gstack /workspace /home/gstack/.gstack
-
 WORKDIR /workspace
 # Browser binary matching project's playwright version
-COPY --from=deps --chown=gstack:gstack /ms-playwright /ms-playwright
-# Chromium sandbox is redundant inside Docker (Docker provides its own isolation).
-# Wrap the binary with --no-sandbox so users don't need --security-opt seccomp=unconfined.
-RUN SHELL_BIN=$(find /ms-playwright -name headless_shell -type f | head -1) \
-    && mv "$SHELL_BIN" "${SHELL_BIN}.real" \
-    && printf '#!/bin/bash\nexec "%s.real" --no-sandbox "$@"\n' "$SHELL_BIN" > "$SHELL_BIN" \
-    && chmod +x "$SHELL_BIN"
+COPY --from=deps --chown=agent:agent /ms-playwright /ms-playwright
 # Built workspace (node_modules + compiled artifacts)
-COPY --from=build --chown=gstack:gstack /workspace /workspace
+COPY --from=build --chown=agent:agent /workspace /workspace
 
-ENV HOME=/home/gstack
-USER gstack
-ENTRYPOINT ["/usr/local/bin/gstack-container-init"]
+ENV HOME=/home/agent
+USER agent
+ENTRYPOINT ["/usr/local/bin/agent-container-init"]
 CMD ["bash"]
