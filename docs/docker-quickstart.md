@@ -21,15 +21,15 @@ Multi-arch — works on both **amd64** and **arm64**.
 
 ```bash
 docker run -it --rm \
-  -v gstack-claude:/home/gstack/.claude \
-  -v gstack-codex:/home/gstack/.codex \
-  -v gstack-config:/home/gstack/.config \
-  -v gstack-cache:/home/gstack/.cache \
+  -v agent-claude:/home/agent/.claude \
+  -v agent-codex:/home/agent/.codex \
+  -v agent-config:/home/agent/.config \
+  -v agent-cache:/home/agent/.cache \
   -v "$PWD":/workspace \
   ghcr.io/opencoca/gstack:latest bash
 ```
 
-You're now inside the container as user `gstack` with `/workspace` pointing at your current directory.
+You're now inside the container as user `agent` with `/workspace` pointing at your current directory.
 
 ## 3. Log in (web login recommended)
 
@@ -40,7 +40,7 @@ claude login
 Follow the browser link — web-based OAuth gives you the full interactive experience.
 API keys work too (`export ANTHROPIC_API_KEY=sk-...`) but web login is smoother.
 
-Your session is saved in the `gstack-claude` volume, so it survives container restarts.
+Your session is saved in the `agent-claude` volume, so it survives container restarts.
 
 ## 4. Use Claude Code
 
@@ -62,10 +62,10 @@ Skip the shell, launch Claude directly:
 
 ```bash
 docker run -it --rm \
-  -v gstack-claude:/home/gstack/.claude \
-  -v gstack-codex:/home/gstack/.codex \
-  -v gstack-config:/home/gstack/.config \
-  -v gstack-cache:/home/gstack/.cache \
+  -v agent-claude:/home/agent/.claude \
+  -v agent-codex:/home/agent/.codex \
+  -v agent-config:/home/agent/.config \
+  -v agent-cache:/home/agent/.cache \
   -v "$PWD":/workspace \
   ghcr.io/opencoca/gstack:latest claude
 ```
@@ -78,10 +78,10 @@ Named volumes keep your auth, settings, and history between runs:
 
 | Volume | What it stores |
 |--------|---------------|
-| `gstack-claude` | Claude auth, config, conversation history, backups |
-| `gstack-codex` | Codex config |
-| `gstack-config` | General app config |
-| `gstack-cache` | Runtime cache |
+| `agent-claude` | Claude auth, config, conversation history, backups |
+| `agent-codex` | Codex config |
+| `agent-config` | General app config |
+| `agent-cache` | Runtime cache |
 
 The container entrypoint automatically sets up config directories and restores
 from backups if your primary config goes missing. First run just works.
@@ -94,9 +94,9 @@ for pixel-perfect screenshots:
 **macOS:**
 ```bash
 docker run -it --rm \
-  -v gstack-claude:/home/gstack/.claude \
-  -v gstack-config:/home/gstack/.config \
-  -v gstack-cache:/home/gstack/.cache \
+  -v agent-claude:/home/agent/.claude \
+  -v agent-config:/home/agent/.config \
+  -v agent-cache:/home/agent/.cache \
   -v "$PWD":/workspace \
   -v /System/Library/Fonts:/usr/share/fonts/system:ro \
   -v /Library/Fonts:/usr/share/fonts/local:ro \
@@ -116,7 +116,7 @@ If you prefer API keys over web login, pass them in:
 ```bash
 docker run -it --rm \
   -e ANTHROPIC_API_KEY \
-  -v gstack-claude:/home/gstack/.claude \
+  -v agent-claude:/home/agent/.claude \
   -v "$PWD":/workspace \
   ghcr.io/opencoca/gstack:latest claude
 ```
@@ -135,7 +135,7 @@ Or use an `.env` file:
 
 ```bash
 docker run -it --rm --env-file .env \
-  -v gstack-claude:/home/gstack/.claude \
+  -v agent-claude:/home/agent/.claude \
   -v "$PWD":/workspace \
   ghcr.io/opencoca/gstack:latest claude
 ```
@@ -192,10 +192,10 @@ pick short names (`/qa`) or namespaced (`/gstack-qa`). Run `./setup --no-prefix`
 docker pull ghcr.io/opencoca/gstack:latest
 
 # Interactive shell
-docker run -it --rm -v gstack-claude:/home/gstack/.claude -v "$PWD":/workspace ghcr.io/opencoca/gstack:latest bash
+docker run -it --rm -v agent-claude:/home/agent/.claude -v "$PWD":/workspace ghcr.io/opencoca/gstack:latest bash
 
 # Straight to Claude
-docker run -it --rm -v gstack-claude:/home/gstack/.claude -v "$PWD":/workspace ghcr.io/opencoca/gstack:latest claude
+docker run -it --rm -v agent-claude:/home/agent/.claude -v "$PWD":/workspace ghcr.io/opencoca/gstack:latest claude
 
 # With API key
 docker run -it --rm -e ANTHROPIC_API_KEY -v "$PWD":/workspace ghcr.io/opencoca/gstack:latest claude
