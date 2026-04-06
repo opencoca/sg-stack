@@ -46,7 +46,7 @@ docker run -it --rm \
   ghcr.io/opencoca/gstack:latest bash
 ```
 
-You're in. The container drops you into a shell as user `agent`, with your current directory mounted at `/workspace`.
+You're in. The container drops you into a shell as user `agent`, with your current directory mounted at `/workspace`. Any skill repos with `SKILL.md` files are auto-discovered and wired into Claude — no setup scripts needed.
 
 ## Step 3: Log in
 

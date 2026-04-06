@@ -62,9 +62,15 @@ RUN cat <<'EOF' >/usr/local/bin/agent-container-init
 #!/usr/bin/env bash
 set -euo pipefail
 
-H="${HOME:-/home/agent}"
-# Create dirs (may fail if volume-mounted as root — that's OK, the mount provides them)
+H="/home/agent"
+# Fix ownership if volumes were created by an older root-based image.
+# Recursive chown so subdirs (debug, sessions, etc.) are also writable.
+for d in "$H/.claude" "$H/.codex" "$H/.config" "$H/.cache" "$H/.local"; do
+    [ -d "$d" ] && chown -R agent:agent "$d" 2>/dev/null || true
+done
+# Create dirs that Claude Code expects
 mkdir -p "$H/.claude/debug" "$H/.codex" "$H/.config" "$H/.cache" "$H/.local/share" 2>/dev/null || true
+chown -R agent:agent "$H/.claude" "$H/.codex" "$H/.config" "$H/.cache" "$H/.local" 2>/dev/null || true
 
 # Persist Claude's top-level config file inside the Claude volume.
 # Non-fatal: fails gracefully when volumes are root-owned (e.g. first Docker run).
@@ -81,7 +87,27 @@ if [ ! -s "$H/.claude/.claude.json" ] 2>/dev/null; then
     fi
 fi
 
-exec "$@"
+# --- Skill auto-discovery ---
+# Scan /opt/skills (baked-in, always present) then /workspace (user-mounted).
+# /workspace wins on name collisions so users can override baked-in skills.
+SKILLS_DIR="$H/.claude/skills"
+mkdir -p "$SKILLS_DIR"
+for search_root in /opt/skills /workspace; do
+    find "$search_root" -maxdepth 5 -name 'SKILL.md' -type f 2>/dev/null | while read -r skill; do
+        dir=$(dirname "$skill")
+        name=$(basename "$dir")
+        # /opt/skills: only link if not already present
+        # /workspace: overwrite (user mounts take priority)
+        if [ "$search_root" = "/workspace" ]; then
+            ln -sf "$dir" "$SKILLS_DIR/$name" 2>/dev/null || true
+        else
+            [ -e "$SKILLS_DIR/$name" ] || ln -s "$dir" "$SKILLS_DIR/$name" 2>/dev/null || true
+        fi
+    done
+done
+chown -Rh agent:agent "$SKILLS_DIR" 2>/dev/null || true
+
+exec su -s /bin/bash agent -c 'exec "$0" "$@"' -- "$@"
 EOF
 RUN chmod +x /usr/local/bin/agent-container-init
 
@@ -121,8 +147,11 @@ WORKDIR /workspace
 COPY --from=deps --chown=agent:agent /ms-playwright /ms-playwright
 # Built workspace (node_modules + compiled artifacts)
 COPY --from=build --chown=agent:agent /workspace /workspace
+# Baked-in skills at /opt/skills — survives bind-mounts over /workspace
+COPY --from=build --chown=agent:agent /workspace /opt/skills
 
 ENV HOME=/home/agent
-USER agent
+
+# Entrypoint runs as root to fix volume ownership, discover skills, then drops to agent
 ENTRYPOINT ["/usr/local/bin/agent-container-init"]
 CMD ["bash"]
