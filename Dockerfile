@@ -7,6 +7,8 @@ FROM oven/bun:${BUN_VERSION}-slim AS base
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ENV DEBIAN_FRONTEND=noninteractive \
+    TERM=xterm-256color \
+    COLORTERM=truecolor \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     # Prevent Playwright npm postinstall from downloading browsers
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
@@ -18,7 +20,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # - Browser binary installed in deps stage to match project's pinned Playwright version
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        bash ca-certificates curl git \
+        bash ca-certificates curl git xz-utils \
         # Chromium headless-shell runtime libraries
         libasound2 libatk-bridge2.0-0 libatk1.0-0 libatspi2.0-0 \
         libdbus-1-3 libdrm2 libexpat1 libgbm1 libglib2.0-0 \
@@ -28,14 +30,22 @@ RUN apt-get update \
         libfontconfig1 libfreetype6 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-              /usr/share/doc/* /usr/share/man/* \
-    && ln -s /usr/local/bin/bun /usr/local/bin/node
+              /usr/share/doc/* /usr/share/man/*
+
+# Real Node.js — Claude Code's interactive TUI (Ink/Yoga WASM) doesn't work
+# under bun-as-node. Direct binary install adds ~70 MB, no PPA needed.
+ARG NODE_VERSION=22.15.0
+RUN ARCH=$(dpkg --print-architecture) \
+    && NODE_ARCH=$([ "$ARCH" = "amd64" ] && echo "x64" || echo "$ARCH") \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" \
+       | tar -xJ -C /usr/local --strip-components=1 \
+    && node --version
 
 # Non-root user: created early so Claude Code installs under /home/agent/.bun/
 # and is accessible without permission hacks. Also needed for Chromium sandbox.
 RUN useradd -m -s /bin/bash agent \
-    && mkdir -p /ms-playwright /workspace /home/agent/.claude /home/agent/.codex \
-    && chown -R agent:agent /workspace
+    && mkdir -p /ms-playwright /workspace /home/agent/.claude/debug /home/agent/.codex \
+    && chown -R agent:agent /workspace /home/agent
 
 # Install Claude Code as agent so modules + binary land in /home/agent/.bun/
 # BUN_INSTALL_BIN is required because bun defaults to linking next to its own
@@ -45,6 +55,7 @@ ENV HOME=/home/agent
 RUN mkdir -p /home/agent/.bun/bin \
     && BUN_INSTALL_BIN=/home/agent/.bun/bin bun install -g @anthropic-ai/claude-code
 USER root
+ENV HOME=/root
 
 # Container entrypoint: manage Claude config symlinks and volume dirs
 RUN cat <<'EOF' >/usr/local/bin/agent-container-init
@@ -53,7 +64,7 @@ set -euo pipefail
 
 H="${HOME:-/home/agent}"
 # Create dirs (may fail if volume-mounted as root — that's OK, the mount provides them)
-mkdir -p "$H/.claude" "$H/.codex" "$H/.config" "$H/.cache" "$H/.local/share" 2>/dev/null || true
+mkdir -p "$H/.claude/debug" "$H/.codex" "$H/.config" "$H/.cache" "$H/.local/share" 2>/dev/null || true
 
 # Persist Claude's top-level config file inside the Claude volume.
 # Non-fatal: fails gracefully when volumes are root-owned (e.g. first Docker run).
@@ -86,8 +97,10 @@ RUN bun install --frozen-lockfile 2>/dev/null || bun install
 # Install headless-shell, then wrap the binary with --no-sandbox so users don't
 # need --security-opt seccomp=unconfined. Done here (not runtime stage) so the
 # wrapper is always in the same layer as the binary.
-RUN bunx playwright install chromium-headless-shell \
-    && SHELL_BIN=$(find /ms-playwright \( -name 'chrome-headless-shell' -o -name 'headless_shell' \) -type f | head -1) \
+RUN bunx playwright install chromium-headless-shell
+# Wrap headless-shell with --no-sandbox (sandbox is redundant inside Docker).
+# Must be a single RUN because $SHELL_BIN doesn't survive across layers.
+RUN SHELL_BIN=$(find /ms-playwright \( -name 'chrome-headless-shell' -o -name 'headless_shell' \) -type f | head -1) \
     && [ -n "$SHELL_BIN" ] && echo "Wrapping $SHELL_BIN with --no-sandbox" \
     && mv "$SHELL_BIN" "${SHELL_BIN}.real" \
     && printf '#!/bin/bash\nexec "%s.real" --no-sandbox "$@"\n' "$SHELL_BIN" > "$SHELL_BIN" \

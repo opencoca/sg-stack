@@ -97,27 +97,27 @@ DOCKER_RUN_ENV_PASSTHROUGH := $(foreach var,$(ENV_PASSTHROUGH_VARS),$(if $(value
 DOCKER_RUN_AUTH_MOUNTS :=
 ifeq ($(ENABLE_ACCOUNT_MOUNTS),1)
 ifneq (,$(wildcard $(CLAUDE_CONFIG_DIR)))
-DOCKER_RUN_AUTH_MOUNTS += -v $(CLAUDE_CONFIG_DIR):/home/gstack/.claude
+DOCKER_RUN_AUTH_MOUNTS += -v $(CLAUDE_CONFIG_DIR):/home/agent/.claude
 endif
 ifneq (,$(wildcard $(CODEX_CONFIG_DIR)))
-DOCKER_RUN_AUTH_MOUNTS += -v $(CODEX_CONFIG_DIR):/home/gstack/.codex
+DOCKER_RUN_AUTH_MOUNTS += -v $(CODEX_CONFIG_DIR):/home/agent/.codex
 endif
 endif
 
 DOCKER_RUN_STATE_MOUNTS :=
 ifeq ($(ENABLE_STATE_VOLUMES),1)
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-config:/home/gstack/.config
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-cache:/home/gstack/.cache
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-local-share:/home/gstack/.local/share
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-config:/home/agent/.config
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-cache:/home/agent/.cache
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-local-share:/home/agent/.local/share
 ifeq ($(ENABLE_ACCOUNT_MOUNTS),0)
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-claude:/home/gstack/.claude
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-codex:/home/gstack/.codex
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-claude:/home/agent/.claude
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-codex:/home/agent/.codex
 else
 ifeq (,$(wildcard $(CLAUDE_CONFIG_DIR)))
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-claude:/home/gstack/.claude
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-claude:/home/agent/.claude
 endif
 ifeq (,$(wildcard $(CODEX_CONFIG_DIR)))
-DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-codex:/home/gstack/.codex
+DOCKER_RUN_STATE_MOUNTS += -v $(STATE_VOLUME_PREFIX)-codex:/home/agent/.codex
 endif
 endif
 endif
@@ -228,7 +228,7 @@ it_claude:
 		-w /workspace \
 		--name $(CONTAINER_NAME)-claude \
 		$(IMAGE_NAME):$(IMAGE_TAG) \
-		bash -lc '$(CLAUDE_COMMAND)'
+		claude
 
 it_run_dev: it_explore
 
