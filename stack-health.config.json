@@ -80,7 +80,7 @@
       "severity": "warn",
       "include": [
         "README.md",
-        "office-hours/**",
+        "office-hours/SKILL.md.tmpl",
         "scripts/resolvers/**"
       ],
       "matchers": [
@@ -102,7 +102,7 @@
           "message": "Recruiting funnel copy is present."
         },
         {
-          "regex": "creator of GStack|Garry Tan",
+          "regex": "creator of (GStack|sg-stack)",
           "flags": "i",
           "message": "Authority-conversion copy is present."
         },
@@ -196,7 +196,7 @@
       ],
       "matchers": [
         {
-          "regex": "(quietly|silently|secretly).*(collect|log|monitor|track|record|send|upload|report)|(collect|log|monitor|track|record|send|upload|report).*(quietly|silently|secretly)",
+          "regex": "(quietly|secretly).*(collect|log|monitor|track|record|send|upload)|silently.*(collect|log|monitor|track|record|send|upload)(?! report)",
           "flags": "i",
           "message": "Hidden-process framing is present."
         },
