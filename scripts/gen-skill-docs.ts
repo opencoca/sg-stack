@@ -339,7 +339,7 @@ function extractHookSafetyProse(tmplContent: string): string | null {
 
 // ─── Template Processing ────────────────────────────────────
 
-const GENERATED_HEADER = `<!-- AUTO-GENERATED from {{SOURCE}} — do not edit directly -->\n<!-- Regenerate: bun run gen:skill-docs -->\n`;
+const GENERATED_HEADER = `<!-- AUTO-GENERATED from {{SOURCE}} — do not edit directly -->\n<!-- Regenerate: bun run gen:skill-docs -->\n<!-- Copyright (c) 2026 Garry Tan. Copyright (c) 2026 Startr LLC  and contributors. MIT License. -->\n`;
 
 /**
  * Process external host output: routing, frontmatter, path rewrites, metadata.

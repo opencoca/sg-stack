@@ -15,6 +15,7 @@ allowed-tools:
 ---
 <!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
 <!-- Regenerate: bun run gen:skill-docs -->
+<!-- Copyright (c) 2026 Garry Tan. Copyright (c) 2026 Startr LLC  and contributors. MIT License. -->
 
 ## Preamble (run first)
 
@@ -218,12 +219,12 @@ This only happens once per project. If `HAS_ROUTING` is `yes` or `ROUTING_DECLIN
 
 If `VENDORED_GSTACK` is `yes`: This project has a vendored copy of gstack at
 `.claude/skills/gstack/`. Vendoring is deprecated. We will not keep vendored copies
-up to date, so this project's gstack will fall behind.
+up to date, so this project's copy may become outdated.
 
 Use AskUserQuestion (one-time per project, check for `~/.gstack/.vendoring-warned-$SLUG` marker):
 
 > This project has gstack vendored in `.claude/skills/gstack/`. Vendoring is deprecated.
-> We won't keep this copy up to date, so you'll fall behind on new features and fixes.
+> This copy won't receive updates automatically. Team mode keeps everyone current.
 >
 > Want to migrate to team mode? It takes about 30 seconds.
 

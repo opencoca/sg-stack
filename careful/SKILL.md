@@ -20,6 +20,7 @@ hooks:
 ---
 <!-- AUTO-GENERATED from SKILL.md.tmpl — do not edit directly -->
 <!-- Regenerate: bun run gen:skill-docs -->
+<!-- Copyright (c) 2026 Garry Tan. Copyright (c) 2026 Startr LLC  and contributors. MIT License. -->
 
 # /careful — Destructive Command Guardrails
 
