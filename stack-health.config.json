@@ -129,8 +129,9 @@
           "message": "Inevitability framing is present."
         },
         {
-          "literal": "Compression |",
-          "message": "Compression-ratio framing is present."
+          "regex": "Compression.*(100x|50x|30x|20x)|~\\d+x compression",
+          "flags": "i",
+          "message": "Compression-ratio hype claim is present."
         },
         {
           "regex": "10,000-20,000 lines per day|600,000\\+ lines of production code",
@@ -195,12 +196,12 @@
       ],
       "matchers": [
         {
-          "regex": "(quietly|silently|secretly).*(collect|log|monitor|track|watch|record|decide|upgrade)|(collect|log|monitor|track|watch|record|decide|upgrade).*(quietly|silently|secretly)",
+          "regex": "(quietly|silently|secretly).*(collect|log|monitor|track|record|send|upload|report)|(collect|log|monitor|track|record|send|upload|report).*(quietly|silently|secretly)",
           "flags": "i",
           "message": "Hidden-process framing is present."
         },
         {
-          "regex": "(monitor|track|watch).*(usage|behavior|sessions?)|(usage|behavior|sessions?).*(monitor|track|watch)",
+          "regex": "(monitor|track|watch) (user |your )?(usage|behavior|sessions?|activity)|(usage|behavior|activity) (monitor|track|watch)ing",
           "flags": "i",
           "message": "Monitoring language is present."
         },

@@ -31,18 +31,14 @@ describe('Audit compliance', () => {
     expect(tmpl).toContain('$TEST_PASSWORD');
   });
 
-  // Fix 2: Conditional telemetry — binary calls wrapped with existence check
-  test('preamble telemetry calls are conditional on _TEL and binary existence', () => {
+  // Fix 2: Remote telemetry removed — no phone-home binaries
+  test('preamble does not reference remote telemetry binaries', () => {
     const preamble = readFileSync(join(ROOT, 'scripts/resolvers/preamble.ts'), 'utf-8');
-    // Pending finalization must check _TEL and binary existence
-    expect(preamble).toContain('_TEL" != "off"');
-    expect(preamble).toContain('-x ');
-    expect(preamble).toContain('gstack-telemetry-log');
-    // End-of-skill telemetry must also be conditional
-    const completionIdx = preamble.indexOf('Telemetry (run last)');
-    expect(completionIdx).toBeGreaterThan(-1);
-    const completionSection = preamble.slice(completionIdx);
-    expect(completionSection).toContain('_TEL" != "off"');
+    expect(preamble).not.toContain('gstack-telemetry-log');
+    expect(preamble).not.toContain('telemetry-ingest');
+    expect(preamble).not.toContain('community-pulse');
+    // Local analytics still allowed
+    expect(preamble).toContain('skill-usage.jsonl');
   });
 
   // Round 2 Fix 1: W012 — Bun install uses checksum verification

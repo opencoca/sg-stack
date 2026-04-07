@@ -48,12 +48,9 @@ mkdir -p ~/.gstack/analytics
 if [ "$_TEL" != "off" ]; then
 echo '{"skill":"setup-browser-cookies","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","repo":"'$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null || echo "unknown")'"}'  >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
 fi
-# zsh-compatible: use find instead of glob to avoid NOMATCH error
+# Clean up stale pending markers
 for _PF in $(find ~/.gstack/analytics -maxdepth 1 -name '.pending-*' 2>/dev/null); do
   if [ -f "$_PF" ]; then
-    if [ "$_TEL" != "off" ] && [ -x "~/.claude/skills/gstack/bin/gstack-telemetry-log" ]; then
-      ~/.claude/skills/gstack/bin/gstack-telemetry-log --event-type skill_run --skill _pending_finalize --outcome unknown --session-id "$_SESSION_ID" 2>/dev/null || true
-    fi
     rm -f "$_PF" 2>/dev/null || true
   fi
   break
@@ -117,38 +114,7 @@ touch ~/.gstack/.completeness-intro-seen
 
 Only run `open` if the user says yes. Always run `touch` to mark as seen. This only happens once.
 
-If `TEL_PROMPTED` is `no` AND `LAKE_INTRO` is `yes`: After the lake intro is handled,
-ask the user about telemetry. Use AskUserQuestion:
 
-> Help gstack get better! Community mode shares usage data (which skills you use, how long
-> they take, crash info) with a stable device ID so we can track trends and fix bugs faster.
-> No code, file paths, or repo names are ever sent.
-> Change anytime with `gstack-config set telemetry off`.
-
-Options:
-- A) Help gstack get better! (recommended)
-- B) No thanks
-
-If A: run `~/.claude/skills/gstack/bin/gstack-config set telemetry community`
-
-If B: ask a follow-up AskUserQuestion:
-
-> How about anonymous mode? We just learn that *someone* used gstack — no unique ID,
-> no way to connect sessions. Just a counter that helps us know if anyone's out there.
-
-Options:
-- A) Sure, anonymous is fine
-- B) No thanks, fully off
-
-If B→A: run `~/.claude/skills/gstack/bin/gstack-config set telemetry anonymous`
-If B→B: run `~/.claude/skills/gstack/bin/gstack-config set telemetry off`
-
-Always run:
-```bash
-touch ~/.gstack/.telemetry-prompted
-```
-
-This only happens once. If `TEL_PROMPTED` is `yes`, skip this entirely.
 
 If `PROACTIVE_PROMPTED` is `no` AND `TEL_PROMPTED` is `yes`: After telemetry is handled,
 ask the user about proactive behavior. Use AskUserQuestion:
@@ -330,18 +296,11 @@ rm -f ~/.gstack/analytics/.pending-"$_SESSION_ID" 2>/dev/null || true
 if [ "$_TEL" != "off" ]; then
 echo '{"skill":"SKILL_NAME","duration_s":"'"$_TEL_DUR"'","outcome":"OUTCOME","browse":"USED_BROWSE","session":"'"$_SESSION_ID"'","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' >> ~/.gstack/analytics/skill-usage.jsonl 2>/dev/null || true
 fi
-# Remote telemetry (opt-in, requires binary)
-if [ "$_TEL" != "off" ] && [ -x ~/.claude/skills/gstack/bin/gstack-telemetry-log ]; then
-  ~/.claude/skills/gstack/bin/gstack-telemetry-log \
-    --skill "SKILL_NAME" --duration "$_TEL_DUR" --outcome "OUTCOME" \
-    --used-browse "USED_BROWSE" --session-id "$_SESSION_ID" 2>/dev/null &
-fi
 ```
 
 Replace `SKILL_NAME` with the actual skill name from frontmatter, `OUTCOME` with
 success/error/abort, and `USED_BROWSE` with true/false based on whether `$B` was used.
-If you cannot determine the outcome, use "unknown". The local JSONL always logs. The
-remote binary only runs if telemetry is not off and the binary exists.
+If you cannot determine the outcome, use "unknown". All analytics are local-only.
 
 ## Plan Mode Safe Operations
 
