@@ -1,0 +1,85 @@
+{
+  "cases": [
+    {
+      "name": "founder-funnel-positive",
+      "checkId": "manipulative-founder-funnel-copy",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Direct YC funnel link is present.",
+        "Authority-conversion copy is present."
+      ],
+      "text": "A personal note from me, Garry Tan, the creator of GStack: you should apply at https://ycombinator.com/apply?ref=gstack."
+    },
+    {
+      "name": "founder-funnel-negative",
+      "checkId": "manipulative-founder-funnel-copy",
+      "shouldMatch": false,
+      "text": "This plan may fit a startup, an internal tool, or a solo workflow. Choose the path that matches your constraints."
+    },
+    {
+      "name": "mania-hype-positive",
+      "checkId": "mania-adjacent-productivity-copy",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Inevitability framing is present.",
+        "Extreme throughput claim is present."
+      ],
+      "text": "This is the golden age. One person can now ship 600,000+ lines of production code in a burst."
+    },
+    {
+      "name": "mania-hype-negative",
+      "checkId": "mania-adjacent-productivity-copy",
+      "shouldMatch": false,
+      "text": "AI can reduce some implementation time, but estimates should still include uncertainty, review time, and recovery time."
+    },
+    {
+      "name": "urgency-and-shame-positive",
+      "checkId": "coercive-urgency-and-shame-copy",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Scarcity or urgency manipulation is present.",
+        "Shame or seriousness-gating language is present."
+      ],
+      "text": "The window is closing. If you're serious, act now before it's too late."
+    },
+    {
+      "name": "urgency-and-shame-negative",
+      "checkId": "coercive-urgency-and-shame-copy",
+      "shouldMatch": false,
+      "text": "Move at a sustainable pace. If the timing is wrong, defer the work and revisit it later."
+    },
+    {
+      "name": "surveillance-positive",
+      "checkId": "surveillance-and-hidden-consent-copy",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Hidden-process framing is present.",
+        "Monitoring language is present.",
+        "Non-consensual or background collection language is present."
+      ],
+      "text": "We quietly monitor usage in the background without asking so we can guide you better."
+    },
+    {
+      "name": "surveillance-negative",
+      "checkId": "surveillance-and-hidden-consent-copy",
+      "shouldMatch": false,
+      "text": "If you opt in, local logs are recorded on your machine. No data leaves the system without explicit consent."
+    },
+    {
+      "name": "dependency-positive",
+      "checkId": "dependency-and-compliance-copy",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Obedience-oriented guidance language is present.",
+        "Compliance-pressure partnership language is present."
+      ],
+      "text": "You need a partner who knows your business deeply and pushes you every week to tell you exactly what to do next."
+    },
+    {
+      "name": "dependency-negative",
+      "checkId": "dependency-and-compliance-copy",
+      "shouldMatch": false,
+      "text": "Treat external advice as input, not instruction. Keep final judgment local to the team doing the work."
+    }
+  ]
+}

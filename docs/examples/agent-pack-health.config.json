@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "defaultIgnores": [
+    ".git/**",
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "coverage/**"
+  ],
+  "checks": [
+    {
+      "id": "pack-doc-freshness",
+      "type": "pattern",
+      "description": "Generated or packaged prompt artifacts should not drift silently from source templates.",
+      "severity": "warn",
+      "include": [
+        "**/*.prompt.md",
+        "**/*.instructions.md",
+        "**/*.agent.md",
+        "**/SKILL.md"
+      ],
+      "matchers": [
+        {
+          "literal": "AUTO-GENERATED",
+          "message": "Generated artifact detected: make sure its source and regeneration command are covered elsewhere."
+        }
+      ]
+    },
+    {
+      "id": "outbound-egress-surfaces",
+      "type": "pattern",
+      "description": "Find runtime references to hosted telemetry, analytics, or external service calls.",
+      "severity": "warn",
+      "include": [
+        "**/*.sh",
+        "**/*.ts",
+        "**/*.js",
+        "**/*.md"
+      ],
+      "matchers": [
+        {
+          "regex": "telemetry|analytics|segment|mixpanel|posthog|supabase",
+          "flags": "i",
+          "message": "Potential outbound telemetry or analytics surface is present."
+        },
+        {
+          "regex": "curl .*https?://|fetch\\(|axios\\(|XMLHttpRequest",
+          "flags": "i",
+          "message": "Potential outbound network path is present."
+        }
+      ]
+    },
+    {
+      "id": "manipulative-copy",
+      "type": "pattern",
+      "description": "Find authority-conversion, urgency, shame, surveillance, or dependency-building language.",
+      "severity": "warn",
+      "include": [
+        "**/*.md",
+        "**/*.tmpl",
+        "**/*.ts",
+        "**/*.js"
+      ],
+      "matchers": [
+        {
+          "regex": "apply now|don'?t be left behind|if you'?re serious|prove you belong",
+          "flags": "i",
+          "message": "Urgency or shame-based persuasion is present."
+        },
+        {
+          "regex": "exactly the kind of|wants to fund|come work at|special kind of builder",
+          "flags": "i",
+          "message": "Authority-conversion or status-signaling language is present."
+        },
+        {
+          "regex": "in the background|without consent|without asking|monitor usage|track sessions",
+          "flags": "i",
+          "message": "Hidden collection or surveillance language is present."
+        },
+        {
+          "regex": "tell you exactly what to do|need a partner who knows your business deeply|push you every week",
+          "flags": "i",
+          "message": "Dependency-building or obedience-oriented language is present."
+        }
+      ]
+    }
+  ]
+}
