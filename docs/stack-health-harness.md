@@ -112,6 +112,12 @@ The current policy fixture corpus covers these families:
 - coercive urgency and shame framing
 - surveillance and hidden-consent language
 - dependency and compliance-building copy
+- false authority appeals and fabricated social proof
+- manufactured scarcity and artificial exclusivity
+- guilt-tripping and value-loss shaming
+- infantilizing language and condescending simplification
+- dark UX confirm-shaming in decline options
+- parasocial relationship building and false intimacy
 
 If you add a new manipulation family, add both:
 - a config rule in `stack-health.config.json`

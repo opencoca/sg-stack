@@ -80,6 +80,7 @@
       "severity": "warn",
       "include": [
         "README.md",
+        "MESSAGING.md",
         "office-hours/SKILL.md.tmpl",
         "scripts/resolvers/**"
       ],
@@ -119,6 +120,7 @@
       "severity": "warn",
       "include": [
         "README.md",
+        "MESSAGING.md",
         "ETHOS.md",
         "office-hours/**",
         "scripts/resolvers/**"
@@ -155,10 +157,12 @@
       "severity": "warn",
       "include": [
         "README.md",
+        "MESSAGING.md",
         "office-hours/**",
         "scripts/resolvers/**",
         "SKILL.md.tmpl",
-        "*/SKILL.md.tmpl"
+        "*/SKILL.md.tmpl",
+        "extension/**"
       ],
       "matchers": [
         {
@@ -188,6 +192,7 @@
       "severity": "warn",
       "include": [
         "README.md",
+        "MESSAGING.md",
         "bin/**",
         "office-hours/**",
         "scripts/resolvers/**",
@@ -219,6 +224,7 @@
       "severity": "warn",
       "include": [
         "README.md",
+        "MESSAGING.md",
         "office-hours/**",
         "scripts/resolvers/**",
         "SKILL.md.tmpl",
@@ -243,6 +249,187 @@
           "regex": "exactly the kind of builders .* wants to fund",
           "flags": "i",
           "message": "Authority approval-seeking language is present."
+        }
+      ]
+    },
+    {
+      "id": "false-authority-appeals",
+      "type": "pattern",
+      "description": "Report fabricated social proof and credential-based persuasion.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "MESSAGING.md",
+        "office-hours/SKILL.md.tmpl",
+        "scripts/resolvers/**"
+      ],
+      "matchers": [
+        {
+          "regex": "backed by (top |leading )?investors",
+          "flags": "i",
+          "message": "Investor-backed social proof is present."
+        },
+        {
+          "regex": "trusted by (thousands|millions|\\d{3,})",
+          "flags": "i",
+          "message": "Fabricated trust-count social proof is present."
+        },
+        {
+          "regex": "as (featured|seen) in",
+          "flags": "i",
+          "message": "Press-mention social proof is present."
+        },
+        {
+          "regex": "world-class|industry-leading|best-in-class",
+          "flags": "i",
+          "message": "Superlative authority claim is present."
+        }
+      ]
+    },
+    {
+      "id": "manufactured-scarcity",
+      "type": "pattern",
+      "description": "Report artificial exclusivity and scarcity-based persuasion.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "MESSAGING.md",
+        "scripts/resolvers/**",
+        "*/SKILL.md.tmpl",
+        "extension/**"
+      ],
+      "matchers": [
+        {
+          "regex": "limited (spots|seats|access|availability)",
+          "flags": "i",
+          "message": "Artificial scarcity framing is present."
+        },
+        {
+          "regex": "exclusive access|invite-only|join.{0,15}waitlist|get on.{0,15}waitlist",
+          "flags": "i",
+          "message": "Artificial exclusivity framing is present."
+        },
+        {
+          "regex": "early[- ]bird|act now|sign up (before|while)",
+          "flags": "i",
+          "message": "Urgency-gated enrollment framing is present."
+        }
+      ]
+    },
+    {
+      "id": "guilt-tripping-copy",
+      "type": "pattern",
+      "description": "Report value-loss guilt and missed-opportunity shaming.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "MESSAGING.md",
+        "scripts/resolvers/**",
+        "*/SKILL.md.tmpl"
+      ],
+      "matchers": [
+        {
+          "regex": "leaving (value|money|opportunity) on the table",
+          "flags": "i",
+          "message": "Value-loss guilt framing is present."
+        },
+        {
+          "regex": "you'?re missing out|missing out on",
+          "flags": "i",
+          "message": "FOMO guilt framing is present."
+        },
+        {
+          "regex": "wasting your (potential|time|talent)",
+          "flags": "i",
+          "message": "Wasted-potential guilt framing is present."
+        }
+      ]
+    },
+    {
+      "id": "infantilizing-language",
+      "type": "pattern",
+      "description": "Report condescending simplification that undermines the user's intelligence.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "MESSAGING.md",
+        "scripts/resolvers/**",
+        "*/SKILL.md.tmpl"
+      ],
+      "matchers": [
+        {
+          "regex": "so easy (even|that) (a |any )?beginner",
+          "flags": "i",
+          "message": "Condescending simplification is present."
+        },
+        {
+          "regex": "dummy[- ]proof|idiot[- ]proof|foolproof",
+          "flags": "i",
+          "message": "Infantilizing difficulty framing is present."
+        },
+        {
+          "regex": "you don'?t need to understand",
+          "flags": "i",
+          "message": "Anti-learning dismissal is present."
+        }
+      ]
+    },
+    {
+      "id": "dark-ux-confirm-shaming",
+      "type": "pattern",
+      "description": "Report shame-loaded decline options in interactive prompts.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "MESSAGING.md",
+        "scripts/resolvers/**",
+        "*/SKILL.md.tmpl",
+        "extension/**"
+      ],
+      "matchers": [
+        {
+          "regex": "No thanks, I don'?t want to (improve|succeed|grow|learn)",
+          "flags": "i",
+          "message": "Confirm-shaming decline option is present."
+        },
+        {
+          "regex": "I'?ll keep struggling|I'?m fine being mediocre|I don'?t care about quality",
+          "flags": "i",
+          "message": "Self-deprecating decline option is present."
+        }
+      ]
+    },
+    {
+      "id": "parasocial-relationship-building",
+      "type": "pattern",
+      "description": "Report false intimacy and parasocial relationship language.",
+      "severity": "warn",
+      "include": [
+        "README.md",
+        "MESSAGING.md",
+        "scripts/resolvers/**",
+        "*/SKILL.md.tmpl"
+      ],
+      "matchers": [
+        {
+          "regex": "just between (us|you and me)",
+          "flags": "i",
+          "message": "False-intimacy framing is present."
+        },
+        {
+          "regex": "I personally (believe|think|feel|recommend)",
+          "flags": "i",
+          "message": "Parasocial personal-voice framing is present."
+        },
+        {
+          "regex": "I'?m always here for you|I'?ll always be here",
+          "flags": "i",
+          "message": "Parasocial availability promise is present."
+        },
+        {
+          "regex": "as your (friend|partner|ally|mentor)",
+          "flags": "i",
+          "message": "Parasocial relationship claim is present."
         }
       ]
     }

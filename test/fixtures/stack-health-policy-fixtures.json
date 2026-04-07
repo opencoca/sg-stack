@@ -80,6 +80,102 @@
       "checkId": "dependency-and-compliance-copy",
       "shouldMatch": false,
       "text": "Treat external advice as input, not instruction. Keep final judgment local to the team doing the work."
+    },
+    {
+      "name": "false-authority-positive",
+      "checkId": "false-authority-appeals",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Investor-backed social proof is present.",
+        "Superlative authority claim is present."
+      ],
+      "text": "Backed by top investors and trusted by thousands. Our world-class platform as featured in TechCrunch."
+    },
+    {
+      "name": "false-authority-negative",
+      "checkId": "false-authority-appeals",
+      "shouldMatch": false,
+      "text": "This tool runs QA checks locally. It does not phone home or require an account."
+    },
+    {
+      "name": "manufactured-scarcity-positive",
+      "checkId": "manufactured-scarcity",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Artificial scarcity framing is present.",
+        "Urgency-gated enrollment framing is present."
+      ],
+      "text": "Limited spots available. Join our waitlist now. Early-bird pricing ends Friday."
+    },
+    {
+      "name": "manufactured-scarcity-negative",
+      "checkId": "manufactured-scarcity",
+      "shouldMatch": false,
+      "text": "Install with one command. No account required. MIT-licensed and open source."
+    },
+    {
+      "name": "guilt-tripping-positive",
+      "checkId": "guilt-tripping-copy",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Value-loss guilt framing is present.",
+        "FOMO guilt framing is present."
+      ],
+      "text": "You're leaving value on the table. You're missing out on the productivity gains everyone else is seeing."
+    },
+    {
+      "name": "guilt-tripping-negative",
+      "checkId": "guilt-tripping-copy",
+      "shouldMatch": false,
+      "text": "Here are the features available. Use what fits your workflow and skip the rest."
+    },
+    {
+      "name": "infantilizing-positive",
+      "checkId": "infantilizing-language",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Condescending simplification is present.",
+        "Anti-learning dismissal is present."
+      ],
+      "text": "So easy even a beginner can ship production code. You don't need to understand how it works."
+    },
+    {
+      "name": "infantilizing-negative",
+      "checkId": "infantilizing-language",
+      "shouldMatch": false,
+      "text": "The skill explains each step so you can learn the process while using it."
+    },
+    {
+      "name": "confirm-shaming-positive",
+      "checkId": "dark-ux-confirm-shaming",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "Confirm-shaming decline option is present.",
+        "Self-deprecating decline option is present."
+      ],
+      "text": "A) Yes, improve my workflow. B) No thanks, I don't want to improve. C) I'll keep struggling on my own."
+    },
+    {
+      "name": "confirm-shaming-negative",
+      "checkId": "dark-ux-confirm-shaming",
+      "shouldMatch": false,
+      "text": "A) Add routing rules (recommended). B) Skip — invoke skills manually."
+    },
+    {
+      "name": "parasocial-positive",
+      "checkId": "parasocial-relationship-building",
+      "shouldMatch": true,
+      "expectedMessages": [
+        "False-intimacy framing is present.",
+        "Parasocial relationship claim is present."
+      ],
+      "text": "Just between us, as your friend and mentor, I personally believe this is the right path for you."
+    },
+    {
+      "name": "parasocial-negative",
+      "checkId": "parasocial-relationship-building",
+      "shouldMatch": false,
+      "text": "Here is the recommendation with the reasoning. Review and decide based on your context."
     }
   ]
 }

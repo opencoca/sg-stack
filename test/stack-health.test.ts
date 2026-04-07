@@ -100,6 +100,12 @@ describe('stack-health harness', () => {
       'coercive-urgency-and-shame-copy',
       'surveillance-and-hidden-consent-copy',
       'dependency-and-compliance-copy',
+      'false-authority-appeals',
+      'manufactured-scarcity',
+      'guilt-tripping-copy',
+      'infantilizing-language',
+      'dark-ux-confirm-shaming',
+      'parasocial-relationship-building',
     ];
 
     for (const checkId of manipulationCheckIds) {
